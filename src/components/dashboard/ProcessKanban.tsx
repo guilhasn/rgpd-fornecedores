@@ -5,8 +5,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Clock } from "lucide-react";
+import { Clock, ShieldAlert } from "lucide-react";
 import { Process, ProcessStatus } from "@/types/process";
+import { Badge } from "@/components/ui/badge";
 
 interface ProcessKanbanProps {
   processos: Process[];
@@ -23,6 +24,17 @@ export function ProcessKanban({ processos, onEdit, formatDate }: ProcessKanbanPr
       case "Média": return "text-yellow-600 border-yellow-200 bg-yellow-50";
       default: return "text-slate-600 border-slate-200 bg-slate-50";
     }
+  };
+
+  const getRiskIndicator = (risco?: string) => {
+    if (risco === "Alto" || risco === "Crítico") {
+      return (
+        <Badge variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-100 h-5 px-1.5 text-[10px] gap-1">
+          <ShieldAlert className="w-3 h-3" /> Risco {risco}
+        </Badge>
+      );
+    }
+    return null;
   };
 
   return (
@@ -63,11 +75,12 @@ export function ProcessKanban({ processos, onEdit, formatDate }: ProcessKanbanPr
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
-                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                    <p className="text-xs text-slate-500 line-clamp-2 mt-1 mb-2">
                       {processo.assunto}
                     </p>
+                    {processo.rgpd?.nivelRisco && getRiskIndicator(processo.rgpd.nivelRisco)}
                   </CardContent>
-                  <CardFooter className="p-4 pt-0 text-xs text-slate-400 flex items-center gap-1">
+                  <CardFooter className="p-4 pt-0 text-xs text-slate-400 flex items-center gap-1 border-t pt-2 mt-2">
                     <Clock className="w-3 h-3" />{" "}
                     {formatDate(processo.dataEntrada)}
                   </CardFooter>
