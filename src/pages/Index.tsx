@@ -49,7 +49,9 @@ const DADOS_EXEMPLO: Process[] = [
     rgpd: {
       nivelRisco: "Médio",
       temAcessoDados: "Sim",
-      dataFimContrato: "2025-12-31"
+      dataFimContrato: "2025-12-31",
+      tipoDadosPessoais: "Nome Completo, Email (Pessoal/Profissional)",
+      finalidadeTratamento: "Gestão de acessos"
     }
   }
 ];
@@ -86,10 +88,28 @@ export default function Index() {
   };
 
   const handleExportCSV = () => {
-    const headers = ["ID,Referencia,Fornecedor,Assunto,Estado,Prioridade,Data Entrada,Risco RGPD,Fim Contrato"];
-    const rows = processos.map(p => 
-      `${p.id},"${p.referencia}","${p.cliente}","${p.assunto}",${p.estado},${p.prioridade},${p.dataEntrada},${p.rgpd?.nivelRisco || 'N/A'},${p.rgpd?.dataFimContrato || ''}`
-    );
+    // Added "Tipos de Dados" and "Finalidade" to headers
+    const headers = ["ID,Referencia,Fornecedor,Assunto,Estado,Prioridade,Data Entrada,Risco RGPD,Fim Contrato,Tipos de Dados,Finalidade"];
+    
+    const rows = processos.map(p => {
+      // Escape quotes for CSV format to handle text with commas correctly
+      const escape = (text?: string) => text ? `"${text.replace(/"/g, '""')}"` : '""';
+      
+      return [
+        p.id,
+        escape(p.referencia),
+        escape(p.cliente),
+        escape(p.assunto),
+        p.estado,
+        p.prioridade,
+        p.dataEntrada,
+        escape(p.rgpd?.nivelRisco || 'N/A'),
+        p.rgpd?.dataFimContrato || '',
+        escape(p.rgpd?.tipoDadosPessoais),
+        escape(p.rgpd?.finalidadeTratamento)
+      ].join(",");
+    });
+
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
