@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Plus, 
   Search, 
@@ -10,7 +10,10 @@ import {
   Edit,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Activity,
+  Briefcase,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,9 +51,16 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
-// --- TIPO DE DADOS (Modelo do teu Excel) ---
+// --- TIPO DE DADOS ---
 type Processo = {
   id: number;
   referencia: string;
@@ -59,14 +69,28 @@ type Processo = {
   estado: "Aberto" | "Em Curso" | "Pendente" | "Concluído";
   prioridade: "Baixa" | "Média" | "Alta";
   dataEntrada: string;
+  historico?: { data: string; acao: string }[];
 };
 
-// --- DADOS INICIAIS (Simulação do Excel) ---
+// --- DADOS INICIAIS ---
 const DADOS_EXEMPLO: Processo[] = [
-  { id: 1, referencia: "PROC-2025/001", cliente: "Tech Solutions Lda", assunto: "Contrato de Serviços", estado: "Em Curso", prioridade: "Alta", dataEntrada: "2025-01-02" },
-  { id: 2, referencia: "PROC-2025/002", cliente: "Maria Silva", assunto: "Avaria Equipamento", estado: "Aberto", prioridade: "Média", dataEntrada: "2025-01-05" },
-  { id: 3, referencia: "PROC-2025/003", cliente: "Restaurante O Tacho", assunto: "Renovação Licença", estado: "Concluído", prioridade: "Baixa", dataEntrada: "2024-12-28" },
-  { id: 4, referencia: "PROC-2025/004", cliente: "João Santos Arq.", assunto: "Consultoria Fiscal", estado: "Pendente", prioridade: "Alta", dataEntrada: "2025-01-10" },
+  { 
+    id: 1, 
+    referencia: "PROC-2025/001", 
+    cliente: "Tech Solutions Lda", 
+    assunto: "Contrato de Serviços", 
+    estado: "Em Curso", 
+    prioridade: "Alta", 
+    dataEntrada: "2025-01-02",
+    historico: [
+      { data: "2025-01-02", acao: "Processo criado" },
+      { data: "2025-01-03", acao: "Atribuído ao departamento jurídico" },
+      { data: "2025-01-05", acao: "Alterado para 'Em Curso'" }
+    ]
+  },
+  { id: 2, referencia: "PROC-2025/002", cliente: "Maria Silva", assunto: "Avaria Equipamento", estado: "Aberto", prioridade: "Média", dataEntrada: "2025-01-05", historico: [{ data: "2025-01-05", acao: "Processo criado" }] },
+  { id: 3, referencia: "PROC-2025/003", cliente: "Restaurante O Tacho", assunto: "Renovação Licença", estado: "Concluído", prioridade: "Baixa", dataEntrada: "2024-12-28", historico: [{ data: "2024-12-28", acao: "Concluído" }] },
+  { id: 4, referencia: "PROC-2025/004", cliente: "João Santos Arq.", assunto: "Consultoria Fiscal", estado: "Pendente", prioridade: "Alta", dataEntrada: "2025-01-10", historico: [{ data: "2025-01-10", acao: "Aguarda documentação" }] },
 ];
 
 export default function Index() {
@@ -75,10 +99,25 @@ export default function Index() {
   const [processoAtual, setProcessoAtual] = useState<Partial<Processo>>({});
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  // --- ANALYTICS (Cálculo Automático) ---
+  const stats = useMemo(() => {
+    return {
+      total: processos.length,
+      pendentes: processos.filter(p => p.estado !== "Concluído").length,
+      urgentes: processos.filter(p => p.prioridade === "Alta" && p.estado !== "Concluído").length,
+    };
+  }, [processos]);
+
+  // --- HELPER DE DATAS ---
+  const getToday = () => new Date().toISOString().split('T')[0];
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    const [ano, mes, dia] = dateStr.split("-");
+    return `${dia}/${mes}/${ano}`;
+  };
+
   // --- LÓGICA DE CRUD ---
-  
   const handleSave = () => {
-    // Validação simples
     if (!processoAtual.cliente || !processoAtual.referencia) {
       toast.error("Preenche os campos obrigatórios!");
       return;
@@ -86,7 +125,29 @@ export default function Index() {
 
     if (processoAtual.id) {
       // Editar existente
-      setProcessos(processos.map(p => p.id === processoAtual.id ? { ...p, ...processoAtual } as Processo : p));
+      setProcessos(processos.map(p => {
+        if (p.id === processoAtual.id) {
+          // Lógica de Histórico Automático
+          const novoHistorico = [...(p.historico || [])];
+          
+          if (p.estado !== processoAtual.estado) {
+            novoHistorico.unshift({ 
+              data: getToday(), 
+              acao: `Estado alterado de '${p.estado}' para '${processoAtual.estado}'` 
+            });
+          }
+          
+          if (p.prioridade !== processoAtual.prioridade) {
+            novoHistorico.unshift({ 
+              data: getToday(), 
+              acao: `Prioridade alterada para '${processoAtual.prioridade}'` 
+            });
+          }
+
+          return { ...p, ...processoAtual, historico: novoHistorico } as Processo;
+        }
+        return p;
+      }));
       toast.success("Processo atualizado com sucesso!");
     } else {
       // Criar novo
@@ -94,9 +155,10 @@ export default function Index() {
       const novoProcesso = { 
         ...processoAtual, 
         id: novoId, 
-        dataEntrada: new Date().toISOString().split('T')[0],
+        dataEntrada: getToday(),
         estado: processoAtual.estado || "Aberto",
-        prioridade: processoAtual.prioridade || "Média"
+        prioridade: processoAtual.prioridade || "Média",
+        historico: [{ data: getToday(), acao: "Processo Criado" }]
       } as Processo;
       setProcessos([...processos, novoProcesso]);
       toast.success("Novo processo criado!");
@@ -116,18 +178,16 @@ export default function Index() {
   };
 
   const handleNew = () => {
-    setProcessoAtual({}); // Limpa o form
+    setProcessoAtual({}); 
     setIsSheetOpen(true);
   };
 
-  // --- FILTROS ---
   const processosFiltrados = processos.filter(p => 
     p.cliente.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
     p.referencia.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
     p.assunto.toLowerCase().includes(termoPesquisa.toLowerCase())
   );
 
-  // --- UI HELPERS ---
   const getStatusColor = (status: string) => {
     switch(status) {
       case "Concluído": return "bg-green-500 hover:bg-green-600";
@@ -145,7 +205,7 @@ export default function Index() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Gestão de Processos 2025</h1>
-            <p className="text-slate-500 mt-1">Gere os teus dados de forma centralizada e segura.</p>
+            <p className="text-slate-500 mt-1">Dashboard Administrativo</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" className="hidden md:flex">
@@ -157,86 +217,146 @@ export default function Index() {
                   <Plus className="mr-2 h-4 w-4" /> Novo Processo
                 </Button>
               </SheetTrigger>
-              <SheetContent className="sm:max-w-md">
-                <SheetHeader>
-                  <SheetTitle>{processoAtual.id ? "Editar Processo" : "Novo Processo"}</SheetTitle>
+              <SheetContent className="sm:max-w-md w-full">
+                <SheetHeader className="mb-6">
+                  <SheetTitle>{processoAtual.id ? `Editar ${processoAtual.referencia}` : "Novo Processo"}</SheetTitle>
                   <SheetDescription>
-                    Preenche os detalhes do processo abaixo. Clica em salvar quando terminares.
+                    Gere os detalhes e consulta o histórico deste processo.
                   </SheetDescription>
                 </SheetHeader>
-                <div className="space-y-6 py-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="ref">Referência</Label>
-                    <Input 
-                      id="ref" 
-                      placeholder="Ex: PROC-2025/099" 
-                      value={processoAtual.referencia || ""}
-                      onChange={e => setProcessoAtual({...processoAtual, referencia: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cliente">Cliente / Entidade</Label>
-                    <Input 
-                      id="cliente" 
-                      placeholder="Nome do cliente" 
-                      value={processoAtual.cliente || ""}
-                      onChange={e => setProcessoAtual({...processoAtual, cliente: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assunto">Assunto</Label>
-                    <Input 
-                      id="assunto" 
-                      placeholder="Resumo do pedido" 
-                      value={processoAtual.assunto || ""}
-                      onChange={e => setProcessoAtual({...processoAtual, assunto: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+
+                <Tabs defaultValue="detalhes" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+                    <TabsTrigger value="historico" disabled={!processoAtual.id}>Histórico</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="detalhes" className="space-y-6">
                     <div className="space-y-2">
-                      <Label>Estado</Label>
-                      <Select 
-                        value={processoAtual.estado} 
-                        onValueChange={(val: any) => setProcessoAtual({...processoAtual, estado: val})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Aberto">Aberto</SelectItem>
-                          <SelectItem value="Em Curso">Em Curso</SelectItem>
-                          <SelectItem value="Pendente">Pendente</SelectItem>
-                          <SelectItem value="Concluído">Concluído</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="ref">Referência</Label>
+                      <Input 
+                        id="ref" 
+                        placeholder="Ex: PROC-2025/099" 
+                        value={processoAtual.referencia || ""}
+                        onChange={e => setProcessoAtual({...processoAtual, referencia: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Prioridade</Label>
-                      <Select 
-                        value={processoAtual.prioridade} 
-                        onValueChange={(val: any) => setProcessoAtual({...processoAtual, prioridade: val})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Baixa">Baixa</SelectItem>
-                          <SelectItem value="Média">Média</SelectItem>
-                          <SelectItem value="Alta">Alta</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="cliente">Cliente / Entidade</Label>
+                      <Input 
+                        id="cliente" 
+                        placeholder="Nome do cliente" 
+                        value={processoAtual.cliente || ""}
+                        onChange={e => setProcessoAtual({...processoAtual, cliente: e.target.value})}
+                      />
                     </div>
-                  </div>
-                </div>
-                <SheetFooter>
-                  <SheetClose asChild>
-                    <Button variant="outline">Cancelar</Button>
-                  </SheetClose>
-                  <Button onClick={handleSave}>Salvar Alterações</Button>
-                </SheetFooter>
+                    <div className="space-y-2">
+                      <Label htmlFor="assunto">Assunto</Label>
+                      <Input 
+                        id="assunto" 
+                        placeholder="Resumo do pedido" 
+                        value={processoAtual.assunto || ""}
+                        onChange={e => setProcessoAtual({...processoAtual, assunto: e.target.value})}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Estado</Label>
+                        <Select 
+                          value={processoAtual.estado} 
+                          onValueChange={(val: any) => setProcessoAtual({...processoAtual, estado: val})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Aberto">Aberto</SelectItem>
+                            <SelectItem value="Em Curso">Em Curso</SelectItem>
+                            <SelectItem value="Pendente">Pendente</SelectItem>
+                            <SelectItem value="Concluído">Concluído</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Prioridade</Label>
+                        <Select 
+                          value={processoAtual.prioridade} 
+                          onValueChange={(val: any) => setProcessoAtual({...processoAtual, prioridade: val})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Baixa">Baixa</SelectItem>
+                            <SelectItem value="Média">Média</SelectItem>
+                            <SelectItem value="Alta">Alta</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <SheetFooter className="mt-8">
+                      <SheetClose asChild>
+                        <Button variant="outline">Cancelar</Button>
+                      </SheetClose>
+                      <Button onClick={handleSave}>Salvar Alterações</Button>
+                    </SheetFooter>
+                  </TabsContent>
+
+                  <TabsContent value="historico">
+                    <div className="space-y-4 pt-4">
+                      <h4 className="text-sm font-medium text-slate-500 uppercase tracking-wider">Timeline de Atividade</h4>
+                      <div className="relative border-l border-slate-200 ml-2 pl-6 space-y-6">
+                        {processoAtual.historico?.map((item, idx) => (
+                          <div key={idx} className="relative">
+                            <div className="absolute -left-[29px] top-1 h-3 w-3 rounded-full bg-slate-300 border-2 border-white" />
+                            <p className="text-sm text-slate-900 font-medium">{item.acao}</p>
+                            <p className="text-xs text-slate-500">{formatDate(item.data)}</p>
+                          </div>
+                        ))}
+                        {(!processoAtual.historico || processoAtual.historico.length === 0) && (
+                          <p className="text-sm text-slate-400 italic">Sem histórico registado.</p>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </SheetContent>
             </Sheet>
           </div>
+        </div>
+
+        {/* Analytics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Processos</CardTitle>
+              <Briefcase className="h-4 w-4 text-slate-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-slate-500">Registados em sistema</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pendentes / Em Curso</CardTitle>
+              <Activity className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pendentes}</div>
+              <p className="text-xs text-slate-500">Requerem atenção</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Alta Prioridade</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{stats.urgentes}</div>
+              <p className="text-xs text-slate-500">Necessitam ação imediata</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Barra de Filtros */}
@@ -304,7 +424,7 @@ export default function Index() {
                     <TableCell className="text-slate-500 text-sm">
                       <div className="flex items-center gap-1">
                         <CalendarIcon className="w-3 h-3" />
-                        {processo.dataEntrada}
+                        {formatDate(processo.dataEntrada)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -318,7 +438,7 @@ export default function Index() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => handleEdit(processo)}>
-                            <Edit className="mr-2 h-4 w-4" /> Editar
+                            <Edit className="mr-2 h-4 w-4" /> Ver Detalhes
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(processo.id)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Apagar
@@ -332,11 +452,6 @@ export default function Index() {
             </TableBody>
           </Table>
         </div>
-        
-        <div className="text-xs text-slate-400 text-center">
-          Mostrando {processosFiltrados.length} registos • Dados sincronizados (Modo Simulação)
-        </div>
-
       </div>
     </div>
   );
