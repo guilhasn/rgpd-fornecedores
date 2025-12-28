@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
   Plus, 
   Search, 
@@ -13,7 +13,10 @@ import {
   AlertCircle,
   Activity,
   Briefcase,
-  AlertTriangle
+  AlertTriangle,
+  LayoutGrid,
+  List as ListIcon,
+  Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +59,8 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
+  CardFooter
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -94,12 +99,23 @@ const DADOS_EXEMPLO: Processo[] = [
 ];
 
 export default function Index() {
-  const [processos, setProcessos] = useState<Processo[]>(DADOS_EXEMPLO);
+  // Inicializar estado com LocalStorage se existir
+  const [processos, setProcessos] = useState<Processo[]>(() => {
+    const saved = localStorage.getItem("processos-db");
+    return saved ? JSON.parse(saved) : DADOS_EXEMPLO;
+  });
+  
   const [termoPesquisa, setTermoPesquisa] = useState("");
   const [processoAtual, setProcessoAtual] = useState<Partial<Processo>>({});
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "board">("list");
 
-  // --- ANALYTICS (Cálculo Automático) ---
+  // Salvar no LocalStorage sempre que 'processos' mudar
+  useEffect(() => {
+    localStorage.setItem("processos-db", JSON.stringify(processos));
+  }, [processos]);
+
+  // --- ANALYTICS ---
   const stats = useMemo(() => {
     return {
       total: processos.length,
@@ -116,6 +132,32 @@ export default function Index() {
     return `${dia}/${mes}/${ano}`;
   };
 
+  // --- EXPORTAR CSV ---
+  const handleExportCSV = () => {
+    // Cabeçalho do CSV
+    const headers = ["ID,Referencia,Cliente,Assunto,Estado,Prioridade,Data Entrada"];
+    
+    // Linhas de dados
+    const rows = processos.map(p => 
+      `${p.id},"${p.referencia}","${p.cliente}","${p.assunto}",${p.estado},${p.prioridade},${p.dataEntrada}`
+    );
+
+    // Juntar tudo
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers, ...rows].join("\n");
+    
+    // Criar link de download e clicar automaticamente
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `processos_export_${getToday()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Relatório exportado com sucesso!");
+  };
+
   // --- LÓGICA DE CRUD ---
   const handleSave = () => {
     if (!processoAtual.cliente || !processoAtual.referencia) {
@@ -124,33 +166,21 @@ export default function Index() {
     }
 
     if (processoAtual.id) {
-      // Editar existente
       setProcessos(processos.map(p => {
         if (p.id === processoAtual.id) {
-          // Lógica de Histórico Automático
           const novoHistorico = [...(p.historico || [])];
-          
           if (p.estado !== processoAtual.estado) {
-            novoHistorico.unshift({ 
-              data: getToday(), 
-              acao: `Estado alterado de '${p.estado}' para '${processoAtual.estado}'` 
-            });
+            novoHistorico.unshift({ data: getToday(), acao: `Estado alterado de '${p.estado}' para '${processoAtual.estado}'` });
           }
-          
           if (p.prioridade !== processoAtual.prioridade) {
-            novoHistorico.unshift({ 
-              data: getToday(), 
-              acao: `Prioridade alterada para '${processoAtual.prioridade}'` 
-            });
+            novoHistorico.unshift({ data: getToday(), acao: `Prioridade alterada para '${processoAtual.prioridade}'` });
           }
-
           return { ...p, ...processoAtual, historico: novoHistorico } as Processo;
         }
         return p;
       }));
-      toast.success("Processo atualizado com sucesso!");
+      toast.success("Processo atualizado!");
     } else {
-      // Criar novo
       const novoId = Math.max(...processos.map(p => p.id), 0) + 1;
       const novoProcesso = { 
         ...processoAtual, 
@@ -197,8 +227,19 @@ export default function Index() {
     }
   };
 
+  const getPriorityColor = (prioridade: string) => {
+    switch(prioridade) {
+      case "Alta": return "text-red-600 border-red-200 bg-red-50";
+      case "Média": return "text-yellow-600 border-yellow-200 bg-yellow-50";
+      default: return "text-slate-600 border-slate-200 bg-slate-50";
+    }
+  };
+
+  // --- KANBAN COLUMNS ---
+  const kanbanColumns = ["Aberto", "Em Curso", "Pendente", "Concluído"];
+
   return (
-    <div className="min-h-screen bg-slate-50/50 p-8">
+    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Cabeçalho */}
@@ -208,8 +249,8 @@ export default function Index() {
             <p className="text-slate-500 mt-1">Dashboard Administrativo</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="hidden md:flex">
-              <FileText className="mr-2 h-4 w-4" /> Exportar Relatório
+            <Button variant="outline" className="hidden md:flex" onClick={handleExportCSV}>
+              <Download className="mr-2 h-4 w-4" /> Exportar CSV
             </Button>
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
@@ -359,99 +400,149 @@ export default function Index() {
           </Card>
         </div>
 
-        {/* Barra de Filtros */}
-        <div className="flex items-center gap-2 bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+        {/* Barra de Controlo e Filtros */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-slate-200 w-full md:w-auto flex-1 max-w-lg">
+            <Search className="h-4 w-4 text-slate-500 ml-2" />
             <Input 
-              placeholder="Pesquisar por referência, cliente ou assunto..." 
-              className="pl-9 bg-slate-50 border-slate-200"
+              placeholder="Pesquisar..." 
+              className="border-none shadow-none focus-visible:ring-0"
               value={termoPesquisa}
               onChange={(e) => setTermoPesquisa(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4 text-slate-600" />
-          </Button>
+          
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setViewMode("list")}
+              className={viewMode === "list" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}
+            >
+              <ListIcon className="h-4 w-4 mr-2" /> Lista
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setViewMode("board")}
+              className={viewMode === "board" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}
+            >
+              <LayoutGrid className="h-4 w-4 mr-2" /> Quadro
+            </Button>
+          </div>
         </div>
 
-        {/* Tabela de Dados */}
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50/50">
-                <TableHead className="w-[120px]">Referência</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Assunto</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Prioridade</TableHead>
-                <TableHead>Data Entrada</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {processosFiltrados.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-slate-500">
-                    Nenhum processo encontrado.
-                  </TableCell>
+        {/* VIEW MODE: LISTA */}
+        {viewMode === "list" && (
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="w-[120px]">Referência</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Assunto</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Prioridade</TableHead>
+                  <TableHead>Data Entrada</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ) : (
-                processosFiltrados.map((processo) => (
-                  <TableRow key={processo.id} className="hover:bg-slate-50/50 transition-colors">
-                    <TableCell className="font-mono text-xs font-medium text-slate-600">
-                      {processo.referencia}
-                    </TableCell>
-                    <TableCell className="font-medium text-slate-900">
-                      {processo.cliente}
-                    </TableCell>
-                    <TableCell className="text-slate-600 max-w-[250px] truncate" title={processo.assunto}>
-                      {processo.assunto}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${getStatusColor(processo.estado)} border-none text-white`}>
-                        {processo.estado}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {processo.prioridade === "Alta" && <AlertCircle className="w-3 h-3 text-red-500" />}
-                        <span className={`text-xs ${processo.prioridade === "Alta" ? "text-red-600 font-medium" : "text-slate-600"}`}>
-                          {processo.prioridade}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-slate-500 text-sm">
-                      <div className="flex items-center gap-1">
-                        <CalendarIcon className="w-3 h-3" />
-                        {formatDate(processo.dataEntrada)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEdit(processo)}>
-                            <Edit className="mr-2 h-4 w-4" /> Ver Detalhes
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(processo.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Apagar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              </TableHeader>
+              <TableBody>
+                {processosFiltrados.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                      Nenhum processo encontrado.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  processosFiltrados.map((processo) => (
+                    <TableRow key={processo.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <TableCell className="font-mono text-xs font-medium text-slate-600">
+                        {processo.referencia}
+                      </TableCell>
+                      <TableCell className="font-medium text-slate-900">
+                        {processo.cliente}
+                      </TableCell>
+                      <TableCell className="text-slate-600 max-w-[250px] truncate" title={processo.assunto}>
+                        {processo.assunto}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusColor(processo.estado)} border-none text-white shadow-none`}>
+                          {processo.estado}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(processo.prioridade)}`}>
+                           {processo.prioridade}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-slate-500 text-sm">
+                        <div className="flex items-center gap-1">
+                          <CalendarIcon className="w-3 h-3" />
+                          {formatDate(processo.dataEntrada)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(processo)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          Editar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* VIEW MODE: KANBAN BOARD */}
+        {viewMode === "board" && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 overflow-x-auto pb-4">
+            {kanbanColumns.map((coluna) => {
+               const processosDaColuna = processosFiltrados.filter(p => p.estado === coluna);
+               return (
+                 <div key={coluna} className="space-y-4 min-w-[280px]">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-slate-700">{coluna}</h3>
+                      <span className="text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-600 font-medium">
+                        {processosDaColuna.length}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {processosDaColuna.map(processo => (
+                        <Card key={processo.id} className="cursor-pointer hover:shadow-md transition-shadow border-slate-200" onClick={() => handleEdit(processo)}>
+                          <CardHeader className="p-4 pb-2 space-y-2">
+                            <div className="flex justify-between items-start">
+                              <span className="text-xs font-mono text-slate-500">{processo.referencia}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getPriorityColor(processo.prioridade)}`}>
+                                {processo.prioridade}
+                              </span>
+                            </div>
+                            <CardTitle className="text-sm font-semibold text-slate-900 leading-tight">
+                              {processo.cliente}
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0">
+                             <p className="text-xs text-slate-500 line-clamp-2 mt-1">{processo.assunto}</p>
+                          </CardContent>
+                          <CardFooter className="p-4 pt-0 text-xs text-slate-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {formatDate(processo.dataEntrada)}
+                          </CardFooter>
+                        </Card>
+                      ))}
+                      {processosDaColuna.length === 0 && (
+                        <div className="h-24 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-slate-400 text-xs">
+                          Vazio
+                        </div>
+                      )}
+                    </div>
+                 </div>
+               );
+            })}
+          </div>
+        )}
+
       </div>
     </div>
   );
