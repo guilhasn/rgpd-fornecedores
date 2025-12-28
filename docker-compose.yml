@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # Serviço Frontend (Aplicação React)
+  frontend:
+    build: .
+    ports:
+      - "3000:80"
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  # Serviço de Base de Dados (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db-data:
