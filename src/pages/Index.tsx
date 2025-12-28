@@ -5,7 +5,8 @@ import {
   LayoutGrid, 
   List as ListIcon,
   Download,
-  Upload
+  Upload,
+  Filter
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Process, SupplierData } from "@/types/process";
 import { ProcessStats } from "@/components/dashboard/ProcessStats";
@@ -39,7 +48,8 @@ const DADOS_EXEMPLO: Process[] = [
     ],
     rgpd: {
       nivelRisco: "Médio",
-      temAcessoDados: "Sim"
+      temAcessoDados: "Sim",
+      dataFimContrato: "2025-12-31"
     }
   }
 ];
@@ -54,6 +64,10 @@ export default function Index() {
   const [processoAtual, setProcessoAtual] = useState<Partial<Process>>({});
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
+  
+  // Filters
+  const [filtroRisco, setFiltroRisco] = useState<string[]>([]);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -63,21 +77,18 @@ export default function Index() {
   const getToday = () => new Date().toISOString().split('T')[0];
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
-    // Handle standard YYYY-MM-DD
     if (dateStr.includes("-")) {
       const [ano, mes, dia] = dateStr.split("-");
-      // Check if it's actually DD-MM-YYYY (common in CSV imports)
       if (dia && dia.length === 4) return `${ano}/${mes}/${dia}`;
       return `${dia}/${mes}/${ano}`;
     }
-    // Handle DD/MM/YYYY
     return dateStr;
   };
 
   const handleExportCSV = () => {
-    const headers = ["ID,Referencia,Fornecedor,Assunto,Estado,Prioridade,Data Entrada,Risco RGPD"];
+    const headers = ["ID,Referencia,Fornecedor,Assunto,Estado,Prioridade,Data Entrada,Risco RGPD,Fim Contrato"];
     const rows = processos.map(p => 
-      `${p.id},"${p.referencia}","${p.cliente}","${p.assunto}",${p.estado},${p.prioridade},${p.dataEntrada},${p.rgpd?.nivelRisco || 'N/A'}`
+      `${p.id},"${p.referencia}","${p.cliente}","${p.assunto}",${p.estado},${p.prioridade},${p.dataEntrada},${p.rgpd?.nivelRisco || 'N/A'},${p.rgpd?.dataFimContrato || ''}`
     );
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -100,39 +111,21 @@ export default function Index() {
       parseCSV(text);
     };
     reader.readAsText(file);
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const parseCSV = (csvText: string) => {
     try {
       const lines = csvText.split("\n");
-      // Skip first 2 lines based on the file structure provided (Metadata lines)
-      // Line 3 contains headers
       const dataLines = lines.slice(3).filter(line => line.trim() !== "");
       
       const novosProcessos: Process[] = [];
       let currentId = Math.max(...processos.map(p => p.id), 0) + 1;
 
       dataLines.forEach(line => {
-        // Handle CSV parsing with semicolon separator
-        // Simple split by ; handling basic quotes
         const cols = line.split(";").map(c => c.replace(/^"|"$/g, "").trim());
-        
-        if (cols.length < 5) return; // Skip invalid lines
+        if (cols.length < 5) return; 
 
-        // Mapping based on the CSV structure provided
-        // Col 0: Número de Processo -> referencia
-        // Col 1: Unidade organica -> unidadeOrganica
-        // Col 3: Nome do Fornecedor -> cliente
-        // Col 4: NIF -> rgpd.nif
-        // Col 5: Tipo de serviço -> assunto
-        // Col 6: Data assinatura -> rgpd.dataInicioContrato
-        // Col 7: Data fim -> rgpd.dataFimContrato
-        // Col 11: Tipos de dados pessoais -> rgpd.tipoDadosPessoais
-        // Col 26: Avaliação de Risco -> rgpd.nivelRisco
-        
-        // Convert dates from DD/MM/YYYY to YYYY-MM-DD for input fields
         const convertDate = (d: string) => {
           if (!d) return "";
           const parts = d.split("/");
@@ -163,8 +156,8 @@ export default function Index() {
           cliente: cols[3] || "Desconhecido",
           unidadeOrganica: cols[1],
           assunto: cols[5] || "Importado via CSV",
-          estado: "Aberto", // Default status
-          prioridade: "Média", // Default priority
+          estado: "Aberto",
+          prioridade: "Média",
           dataEntrada: getToday(),
           rgpd: rgpdData,
           historico: [{ data: getToday(), acao: "Importado via ficheiro CSV" }]
@@ -238,12 +231,27 @@ export default function Index() {
     setIsSheetOpen(true);
   };
 
-  const processosFiltrados = processos.filter(p => 
-    p.cliente.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
-    p.referencia.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
-    p.assunto.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
-    (p.rgpd?.nif || "").includes(termoPesquisa)
-  );
+  const toggleRiskFilter = (risk: string) => {
+    setFiltroRisco(prev => 
+      prev.includes(risk) 
+        ? prev.filter(r => r !== risk)
+        : [...prev, risk]
+    );
+  };
+
+  const processosFiltrados = processos.filter(p => {
+    const matchesSearch = 
+      p.cliente.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+      p.referencia.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+      p.assunto.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+      (p.rgpd?.nif || "").includes(termoPesquisa);
+
+    const matchesRisk = 
+      filtroRisco.length === 0 || 
+      (p.rgpd?.nivelRisco && filtroRisco.includes(p.rgpd.nivelRisco));
+
+    return matchesSearch && matchesRisk;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
@@ -308,24 +316,48 @@ export default function Index() {
               onChange={(e) => setTermoPesquisa(e.target.value)}
             />
           </div>
+
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="border-dashed bg-white">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Risco {filtroRisco.length > 0 && `(${filtroRisco.length})`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Filtrar por Risco</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {["Crítico", "Alto", "Médio", "Baixo"].map((risk) => (
+                  <DropdownMenuCheckboxItem
+                    key={risk}
+                    checked={filtroRisco.includes(risk)}
+                    onCheckedChange={() => toggleRiskFilter(risk)}
+                  >
+                    {risk}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setViewMode("list")}
-              className={viewMode === "list" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}
-            >
-              <ListIcon className="h-4 w-4 mr-2" /> Lista
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setViewMode("board")}
-              className={viewMode === "board" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}
-            >
-              <LayoutGrid className="h-4 w-4 mr-2" /> Quadro
-            </Button>
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewMode("list")}
+                className={viewMode === "list" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}
+              >
+                <ListIcon className="h-4 w-4 mr-2" /> Lista
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewMode("board")}
+                className={viewMode === "board" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}
+              >
+                <LayoutGrid className="h-4 w-4 mr-2" /> Quadro
+              </Button>
+            </div>
           </div>
         </div>
 

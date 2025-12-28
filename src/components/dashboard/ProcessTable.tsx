@@ -13,7 +13,9 @@ import {
   Edit,
   ShieldAlert,
   ShieldCheck,
-  Shield
+  Shield,
+  Clock,
+  AlertCircle
 } from "lucide-react";
 import { Process } from "@/types/process";
 import {
@@ -27,6 +29,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ProcessTableProps {
   processos: Process[];
@@ -61,6 +69,44 @@ export function ProcessTable({ processos, onEdit, onDelete, formatDate }: Proces
     }
   };
 
+  const checkExpiry = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const today = new Date();
+    const expiry = new Date(dateStr);
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <AlertCircle className="w-4 h-4 text-red-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Contrato Expirado</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    if (diffDays <= 30) {
+       return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <Clock className="w-4 h-4 text-orange-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Expira em {diffDays} dias</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
       <Table>
@@ -72,7 +118,7 @@ export function ProcessTable({ processos, onEdit, onDelete, formatDate }: Proces
             <TableHead>Assunto</TableHead>
             <TableHead>Risco RGPD</TableHead>
             <TableHead>Estado</TableHead>
-            <TableHead>Data</TableHead>
+            <TableHead>Fim Contrato</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -117,7 +163,10 @@ export function ProcessTable({ processos, onEdit, onDelete, formatDate }: Proces
                   </Badge>
                 </TableCell>
                 <TableCell className="text-slate-500 text-xs whitespace-nowrap">
-                  {formatDate(processo.dataEntrada)}
+                   <div className="flex items-center gap-2">
+                    {processo.rgpd?.dataFimContrato ? formatDate(processo.rgpd.dataFimContrato) : "-"}
+                    {checkExpiry(processo.rgpd?.dataFimContrato)}
+                   </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
