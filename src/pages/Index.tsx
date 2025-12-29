@@ -32,6 +32,7 @@ import { ProcessStats } from "@/components/dashboard/ProcessStats";
 import { ProcessTable } from "@/components/dashboard/ProcessTable";
 import { ProcessKanban } from "@/components/dashboard/ProcessKanban";
 import { ProcessForm } from "@/components/dashboard/ProcessForm";
+import { DashboardAlerts } from "@/components/dashboard/DashboardAlerts";
 
 // --- DADOS INICIAIS ---
 const DADOS_EXEMPLO: Process[] = [
@@ -88,13 +89,9 @@ export default function Index() {
   };
 
   const handleExportCSV = () => {
-    // Added "Tipos de Dados" and "Finalidade" to headers
     const headers = ["ID,Referencia,Fornecedor,Assunto,Estado,Prioridade,Data Entrada,Risco RGPD,Fim Contrato,Tipos de Dados,Finalidade"];
-    
     const rows = processos.map(p => {
-      // Escape quotes for CSV format to handle text with commas correctly
       const escape = (text?: string) => text ? `"${text.replace(/"/g, '""')}"` : '""';
-      
       return [
         p.id,
         escape(p.referencia),
@@ -109,7 +106,6 @@ export default function Index() {
         escape(p.rgpd?.finalidadeTratamento)
       ].join(",");
     });
-
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -323,7 +319,15 @@ export default function Index() {
           </div>
         </div>
 
-        <ProcessStats processos={processos} />
+        {/* Stats and Alerts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-3">
+                 <ProcessStats processos={processos} />
+            </div>
+            <div className="lg:col-span-1">
+                 <DashboardAlerts processos={processos} onViewProcess={handleEdit} />
+            </div>
+        </div>
 
         {/* Barra de Controlo e Filtros */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">

@@ -121,15 +121,28 @@ export function ProcessGdprForm({ processo, setProcesso }: ProcessGdprFormProps)
     updateRgpd("tipoDadosPessoais", newTypes.join(", "));
   };
 
+  // Simple NIF Validation (Check if it has 9 digits)
+  const isNifValid = (nif: string | undefined) => {
+    if (!nif) return true; // Empty is considered valid initially to avoid error on load
+    return /^\d{9}$/.test(nif);
+  };
+
+  const nifValid = isNifValid(rgpd.nif);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>NIF Fornecedor</Label>
+          <Label className="flex justify-between">
+            NIF Fornecedor
+            {!nifValid && <span className="text-xs text-red-500 font-normal">Formato inválido (9 dígitos)</span>}
+          </Label>
           <Input
             value={rgpd.nif || ""}
             onChange={(e) => updateRgpd("nif", e.target.value)}
             placeholder="000 000 000"
+            className={!nifValid ? "border-red-300 focus-visible:ring-red-200" : ""}
+            maxLength={9}
           />
         </div>
         <div className="space-y-2">
