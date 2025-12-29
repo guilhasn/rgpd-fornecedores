@@ -6,7 +6,8 @@ import {
   List as ListIcon,
   Download,
   Upload,
-  Filter
+  Filter,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +91,7 @@ export default function Index() {
   
   // Filters
   const [filtroRisco, setFiltroRisco] = useState<string[]>([]);
+  const [filtroEstado, setFiltroEstado] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -275,6 +277,20 @@ export default function Index() {
     );
   };
 
+  const toggleStatusFilter = (status: string) => {
+    setFiltroEstado(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  const clearFilters = () => {
+    setFiltroRisco([]);
+    setFiltroEstado([]);
+    setTermoPesquisa("");
+  };
+
   const processosFiltrados = processos.filter(p => {
     const matchesSearch = 
       p.cliente.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
@@ -286,12 +302,18 @@ export default function Index() {
       filtroRisco.length === 0 || 
       (p.rgpd?.nivelRisco && filtroRisco.includes(p.rgpd.nivelRisco));
 
-    return matchesSearch && matchesRisk;
+    const matchesStatus = 
+      filtroEstado.length === 0 ||
+      filtroEstado.includes(p.estado);
+
+    return matchesSearch && matchesRisk && matchesStatus;
   });
 
+  const activeFiltersCount = filtroRisco.length + filtroEstado.length;
+
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 print:bg-white print:p-0">
+      <div className="max-w-7xl mx-auto space-y-8 print:hidden">
         
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -321,8 +343,8 @@ export default function Index() {
                   <Plus className="mr-2 h-4 w-4" /> Novo Processo
                 </Button>
               </SheetTrigger>
-              <SheetContent className="sm:max-w-2xl w-full">
-                <SheetHeader className="mb-6">
+              <SheetContent className="sm:max-w-2xl w-full print:border-none print:shadow-none print:max-w-none print:w-full print:h-full print:p-0">
+                <SheetHeader className="mb-6 print:hidden">
                   <SheetTitle>{processoAtual.id ? `Editar ${processoAtual.referencia}` : "Novo Processo"}</SheetTitle>
                   <SheetDescription>
                     Gere os detalhes contratuais e a avaliação de impacto RGPD.
@@ -365,12 +387,45 @@ export default function Index() {
               value={termoPesquisa}
               onChange={(e) => setTermoPesquisa(e.target.value)}
             />
+             {termoPesquisa && (
+               <Button variant="ghost" size="sm" onClick={() => setTermoPesquisa("")} className="h-6 w-6 p-0 hover:bg-transparent">
+                  <X className="h-4 w-4 text-slate-400" />
+               </Button>
+             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+             {activeFiltersCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-slate-500 text-xs">
+                  Limpar Filtros ({activeFiltersCount})
+                </Button>
+             )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="border-dashed bg-white">
+                <Button variant="outline" className={`border-dashed bg-white ${filtroEstado.length > 0 ? "border-blue-300 bg-blue-50 text-blue-700" : ""}`}>
+                  <Filter className="mr-2 h-4 w-4" />
+                  Estado {filtroEstado.length > 0 && `(${filtroEstado.length})`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Filtrar por Estado</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {["Aberto", "Em Curso", "Pendente", "Concluído", "Cancelado"].map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={filtroEstado.includes(status)}
+                    onCheckedChange={() => toggleStatusFilter(status)}
+                  >
+                    {status}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className={`border-dashed bg-white ${filtroRisco.length > 0 ? "border-orange-300 bg-orange-50 text-orange-700" : ""}`}>
                   <Filter className="mr-2 h-4 w-4" />
                   Risco {filtroRisco.length > 0 && `(${filtroRisco.length})`}
                 </Button>
