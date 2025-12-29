@@ -1,9 +1,10 @@
-export type ProcessStatus = "Aberto" | "Em Curso" | "Pendente" | "Concluído";
-export type ProcessPriority = "Baixa" | "Média" | "Alta";
+export type ProcessStatus = "Aberto" | "Em Curso" | "Pendente" | "Concluído" | "Cancelado";
+export type ProcessPriority = "Baixa" | "Média" | "Alta" | "Urgente";
 
 export interface ProcessHistory {
   data: string;
   acao: string;
+  user?: string;
 }
 
 export interface SupplierData {
