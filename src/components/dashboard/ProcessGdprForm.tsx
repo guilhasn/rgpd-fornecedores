@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus, X, AlertCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -121,27 +121,54 @@ export function ProcessGdprForm({ processo, setProcesso }: ProcessGdprFormProps)
     updateRgpd("tipoDadosPessoais", newTypes.join(", "));
   };
 
-  // Simple NIF Validation (Check if it has 9 digits)
-  const isNifValid = (nif: string | undefined) => {
-    if (!nif) return true; // Empty is considered valid initially to avoid error on load
-    return /^\d{9}$/.test(nif);
+  // Official Portuguese NIF Validation Algorithm
+  const validatePTNIF = (nif: string) => {
+    if (!nif) return true; // Allow empty
+    const value = nif.replace(/\D/g, ''); // Remove non-digits
+    
+    if (value.length !== 9) return false;
+    
+    const firstChar = parseInt(value.charAt(0));
+    // Valid first digits for PT NIFs
+    if (![1, 2, 3, 5, 6, 8, 9].includes(firstChar)) return false;
+
+    let total = 0;
+    for (let i = 0; i < 8; i++) {
+      total += parseInt(value.charAt(i)) * (9 - i + 1);
+    }
+
+    const modulo11 = total % 11;
+    const checkDigit = modulo11 < 2 ? 0 : 11 - modulo11;
+
+    return checkDigit === parseInt(value.charAt(8));
   };
 
-  const nifValid = isNifValid(rgpd.nif);
+  const nifValid = validatePTNIF(rgpd.nif || "");
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label className="flex justify-between">
+          <Label className="flex justify-between items-center">
             NIF Fornecedor
-            {!nifValid && <span className="text-xs text-red-500 font-normal">Formato inválido (9 dígitos)</span>}
+            {!nifValid && (
+              <span className="flex items-center text-xs text-red-500 font-medium">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                NIF Inválido
+              </span>
+            )}
+            {nifValid && rgpd.nif && rgpd.nif.length === 9 && (
+               <span className="flex items-center text-xs text-green-600 font-medium">
+                <Check className="w-3 h-3 mr-1" />
+                Válido
+              </span>
+            )}
           </Label>
           <Input
             value={rgpd.nif || ""}
             onChange={(e) => updateRgpd("nif", e.target.value)}
             placeholder="000 000 000"
-            className={!nifValid ? "border-red-300 focus-visible:ring-red-200" : ""}
+            className={!nifValid ? "border-red-300 focus-visible:ring-red-200 bg-red-50/30" : "border-slate-200"}
             maxLength={9}
           />
         </div>
@@ -228,7 +255,7 @@ export function ProcessGdprForm({ processo, setProcesso }: ProcessGdprFormProps)
           </div>
         </div>
 
-        {/* New Multi-Select Data Types Component */}
+        {/* Multi-Select Data Types Component */}
         <div className="space-y-2">
           <Label>Tipos de Dados Pessoais</Label>
           <Popover open={openCombobox} onOpenChange={setOpenCombobox}>

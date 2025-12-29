@@ -33,6 +33,7 @@ import { ProcessTable } from "@/components/dashboard/ProcessTable";
 import { ProcessKanban } from "@/components/dashboard/ProcessKanban";
 import { ProcessForm } from "@/components/dashboard/ProcessForm";
 import { DashboardAlerts } from "@/components/dashboard/DashboardAlerts";
+import { DashboardActivity } from "@/components/dashboard/DashboardActivity";
 
 // --- DADOS INICIAIS ---
 const DADOS_EXEMPLO: Process[] = [
@@ -40,19 +41,38 @@ const DADOS_EXEMPLO: Process[] = [
     id: 1, 
     referencia: "PROC-2025/001", 
     cliente: "Tech Solutions Lda", 
-    assunto: "Contrato de Serviços", 
+    assunto: "Contrato de Serviços de TI", 
     estado: "Em Curso", 
     prioridade: "Alta", 
     dataEntrada: "2025-01-02",
     historico: [
-      { data: "2025-01-02", acao: "Processo criado" }
+      { data: "2025-01-02", acao: "Processo criado" },
+      { data: "2025-01-05", acao: "Nota: Reunião de kickoff agendada para dia 10." },
     ],
     rgpd: {
       nivelRisco: "Médio",
       temAcessoDados: "Sim",
       dataFimContrato: "2025-12-31",
       tipoDadosPessoais: "Nome Completo, Email (Pessoal/Profissional)",
-      finalidadeTratamento: "Gestão de acessos"
+      finalidadeTratamento: "Gestão de acessos",
+      nif: "501234567"
+    }
+  },
+  {
+    id: 2,
+    referencia: "PROC-2025/002",
+    cliente: "Limpezas & Cia",
+    assunto: "Serviços de Limpeza",
+    estado: "Aberto",
+    prioridade: "Média",
+    dataEntrada: "2025-02-15",
+    historico: [
+       { data: "2025-02-15", acao: "Processo criado" }
+    ],
+    rgpd: {
+        nivelRisco: "Baixo",
+        temAcessoDados: "Não",
+        nif: "509876543"
     }
   }
 ];
@@ -319,13 +339,19 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Stats and Alerts Grid */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3">
                  <ProcessStats processos={processos} />
             </div>
-            <div className="lg:col-span-1">
+            
+            <div className="lg:col-span-1 flex flex-col gap-6">
+                 {/* Sidebar Column for Widgets */}
                  <DashboardAlerts processos={processos} onViewProcess={handleEdit} />
+                 
+                 <div className="flex-1 min-h-[300px]">
+                     <DashboardActivity processos={processos} />
+                 </div>
             </div>
         </div>
 
