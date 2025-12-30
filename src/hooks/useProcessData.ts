@@ -2,102 +2,108 @@ import { useState, useEffect } from "react";
 import { Process } from "@/types/process";
 import { toast } from "sonner";
 
-const DADOS_EXEMPLO: Process[] = [
-  { 
-    id: 1, 
-    referencia: "PROC-2025/001", 
-    cliente: "Tech Solutions Lda", 
-    assunto: "Contrato de Serviços de TI", 
-    estado: "Em Curso", 
-    prioridade: "Alta", 
-    dataEntrada: "2025-01-02",
-    historico: [
-      { data: "2025-01-02", acao: "Processo criado" },
-      { data: "2025-01-05", acao: "Nota: Reunião de kickoff agendada para dia 10." },
-    ],
-    rgpd: {
-      nivelRisco: "Médio",
-      temAcessoDados: "Sim",
-      dataFimContrato: "2025-12-31",
-      tipoDadosPessoais: "Nome Completo, Email (Pessoal/Profissional)",
-      finalidadeTratamento: "Gestão de acessos",
-      nif: "501234567"
-    },
-    unidadeOrganica: "IT"
-  },
-  {
-    id: 2,
-    referencia: "PROC-2025/002",
-    cliente: "Limpezas & Cia",
-    assunto: "Serviços de Limpeza",
-    estado: "Aberto",
-    prioridade: "Média",
-    dataEntrada: "2025-02-15",
-    historico: [
-       { data: "2025-02-15", acao: "Processo criado" }
-    ],
-    rgpd: {
-        nivelRisco: "Baixo",
-        temAcessoDados: "Não",
-        nif: "509876543"
-    },
-    unidadeOrganica: "DAF"
-  }
-];
-
 export function useProcessData() {
-  const [processos, setProcessos] = useState<Process[]>(() => {
-    const saved = localStorage.getItem("processos-db");
-    return saved ? JSON.parse(saved) : DADOS_EXEMPLO;
-  });
+  const [processos, setProcessos] = useState<Process[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchProcesses = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/processes?limit=100');
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+      // The API returns { data: [...], meta: {...} }
+      setProcessos(data.data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao carregar dados do servidor.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem("processos-db", JSON.stringify(processos));
-  }, [processos]);
+    fetchProcesses();
+  }, []);
 
-  const getToday = () => new Date().toISOString().split('T')[0];
-
-  const addProcess = (processo: Partial<Process>) => {
-    const novoId = Math.max(...processos.map(p => p.id), 0) + 1;
-    const novoProcesso = { 
-      ...processo, 
-      id: novoId, 
-      dataEntrada: getToday(),
-      estado: processo.estado || "Aberto",
-      prioridade: processo.prioridade || "Média",
-      historico: [{ data: getToday(), acao: "Processo Criado" }]
-    } as Process;
-    setProcessos([...processos, novoProcesso]);
-    toast.success("Novo processo criado!");
-  };
-
-  const updateProcess = (processoAtual: Partial<Process>) => {
-    if (!processoAtual.id) return;
-    
-    setProcessos(processos.map(p => {
-      if (p.id === processoAtual.id) {
-        const novoHistorico = [...(p.historico || [])];
-        if (p.estado !== processoAtual.estado) {
-          novoHistorico.unshift({ data: getToday(), acao: `Estado alterado de '${p.estado}' para '${processoAtual.estado}'` });
-        }
-        if (p.rgpd?.nivelRisco !== processoAtual.rgpd?.nivelRisco && processoAtual.rgpd?.nivelRisco) {
-          novoHistorico.unshift({ data: getToday(), acao: `Nível de risco atualizado para '${processoAtual.rgpd?.nivelRisco}'` });
-        }
-        return { ...p, ...processoAtual, historico: novoHistorico } as Process;
+  const addProcess = async (novoProcesso: Partial<Process>) => {
+    try {
+      const res = await fetch('/api/processes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoProcesso)
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(JSON.stringify(err));
       }
-      return p;
-    }));
-    toast.success("Processo atualizado!");
+
+      const savedProcess = await res.json();
+      setProcessos(prev => [savedProcess, ...prev]);
+      toast.success("Processo criado com sucesso!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao guardar processo.");
+    }
   };
 
-  const deleteProcess = (id: number) => {
-    setProcessos(processos.filter(p => p.id !== id));
-    toast.success("Processo removido com sucesso.");
+  const updateProcess = async (processoAtualizado: Partial<Process>) => {
+    if (!processoAtualizado.id) return;
+    
+    try {
+      const res = await fetch(`/api/processes/${processoAtualizado.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(processoAtualizado)
+      });
+
+      if (!res.ok) throw new Error('Update failed');
+      
+      const updated = await res.json();
+      setProcessos(prev => prev.map(p => p.id === updated.id ? updated : p));
+      toast.success("Processo atualizado!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao atualizar processo.");
+    }
   };
 
-  const importProcesses = (novosProcessos: Process[]) => {
-    setProcessos(prev => [...prev, ...novosProcessos]);
-    toast.success(`${novosProcessos.length} processos importados com sucesso!`);
+  const deleteProcess = async (id: number) => {
+    try {
+      const res = await fetch(`/api/processes/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) throw new Error('Delete failed');
+
+      setProcessos(prev => prev.filter(p => p.id !== id));
+      toast.success("Processo removido.");
+    } catch (error) {
+      toast.error("Erro ao remover processo.");
+    }
+  };
+
+  const importProcesses = async (novosProcessos: Process[]) => {
+    // For import, we loop and create (simple approach for now)
+    // Ideally this should be a bulk insert API endpoint
+    try {
+        let count = 0;
+        for (const p of novosProcessos) {
+            // Remove ID to create new
+            const { id, ...rest } = p; 
+            await fetch('/api/processes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(rest)
+            });
+            count++;
+        }
+        await fetchProcesses();
+        toast.success(`${count} processos importados!`);
+    } catch (e) {
+        toast.error("Erro na importação.");
+    }
   };
 
   return {
@@ -105,6 +111,7 @@ export function useProcessData() {
     addProcess,
     updateProcess,
     deleteProcess,
-    importProcesses
+    importProcesses,
+    isLoading
   };
 }

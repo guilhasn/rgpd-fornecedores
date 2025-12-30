@@ -1,42 +1,57 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  frontend:
-    build: .
-    restart: unless-stopped
-    depends_on:
-      - db
-    expose:
-      - "80"
-    environment:
-      - VIRTUAL_HOST=rgpd-fornecedores.cm-pombal.pt
-      - VIRTUAL_PORT=80
-      # Se usas Let's Encrypt com o companion (só se tiveres):
-      # - LETSENCRYPT_HOST=rgpd-fornecedores.teu-dominio.pt
-      # - LETSENCRYPT_EMAIL=teuemail@dominio.pt
-    networks:
-      - proxy
-      - app-network
-
+  # Database Service
   db:
     image: postgres:15-alpine
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mydatabase
-    expose:
-      - "5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     networks:
       - app-network
+    expose:
+      - "5432"
+
+  # Backend API Service
+  api:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/mydatabase
+      PORT: 3001
+    networks:
+      - app-network
+    depends_on:
+      - db
+    expose:
+      - "3001"
+    command: sh -c "npx prisma migrate deploy && npm start"
+
+  # Frontend Service
+  frontend:
+    build: .
+    restart: always
+    networks:
+      - proxy
+      - app-network
+    depends_on:
+      - api
+    environment:
+      - VIRTUAL_HOST=${VIRTUAL_HOST:-rgpd.local}
+      - VIRTUAL_PORT=80
+      - LETSENCRYPT_HOST=${VIRTUAL_HOST:-rgpd.local}
 
 volumes:
-  db-data:
+  pgdata:
 
 networks:
-  app-network:
-    driver: bridge
   proxy:
     external: true
+  app-network:
+    driver: bridge

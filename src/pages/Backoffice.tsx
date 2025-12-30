@@ -9,13 +9,6 @@ import { ArrowLeft, Plus, Save, Trash2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { UnidadeOrganica } from "@/types/process";
 
-const DEFAULT_UOS: UnidadeOrganica[] = [
-  { id: "1", sigla: "DAF", nome: "Departamento Administrativo e Financeiro" },
-  { id: "2", sigla: "DOM", nome: "Departamento de Obras Municipais" },
-  { id: "3", sigla: "RH", nome: "Recursos Humanos" },
-  { id: "4", sigla: "IT", nome: "Tecnologias de Informação" },
-];
-
 export default function Backoffice() {
   const [uos, setUos] = useState<UnidadeOrganica[]>([]);
   const [newSigla, setNewSigla] = useState("");
@@ -23,16 +16,20 @@ export default function Backoffice() {
   const [orgName, setOrgName] = useState("");
   const [dpoEmail, setDpoEmail] = useState("");
 
-  useEffect(() => {
-    // Load UOs
-    const savedUos = localStorage.getItem("uos-db");
-    if (savedUos) {
-      setUos(JSON.parse(savedUos));
-    } else {
-      setUos(DEFAULT_UOS);
-    }
+  const fetchUos = async () => {
+    try {
+        const res = await fetch('/api/uos');
+        if(res.ok) setUos(await res.json());
+    } catch(e) { console.error(e); }
+  };
 
-    // Load Settings
+  useEffect(() => {
+    fetchUos();
+
+    // Settings still on localStorage for simplicity as requested only CRUD for entities
+    // But logically org settings could be in DB too. 
+    // Keeping settings in localStorage to match specific "tasks required" scope 
+    // which prioritized Process/UO entities in DB.
     const savedOrg = localStorage.getItem("org-settings");
     if (savedOrg) {
       const settings = JSON.parse(savedOrg);
@@ -41,32 +38,42 @@ export default function Backoffice() {
     }
   }, []);
 
-  const saveUos = (newUos: UnidadeOrganica[]) => {
-    setUos(newUos);
-    localStorage.setItem("uos-db", JSON.stringify(newUos));
-  };
-
-  const handleAddUo = () => {
+  const handleAddUo = async () => {
     if (!newSigla || !newNome) {
       toast.error("Preencha a Sigla e o Nome.");
       return;
     }
-    const newUo: UnidadeOrganica = {
-      id: Date.now().toString(),
-      sigla: newSigla.toUpperCase(),
-      nome: newNome
-    };
-    const updated = [...uos, newUo];
-    saveUos(updated);
-    setNewSigla("");
-    setNewNome("");
-    toast.success("Unidade Orgânica adicionada!");
+    
+    try {
+        const res = await fetch('/api/uos', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ sigla: newSigla.toUpperCase(), nome: newNome })
+        });
+        
+        if(res.ok) {
+            fetchUos();
+            setNewSigla("");
+            setNewNome("");
+            toast.success("Unidade Orgânica adicionada!");
+        } else {
+            toast.error("Erro ao criar UO");
+        }
+    } catch (e) {
+        toast.error("Erro de conexão");
+    }
   };
 
-  const handleDeleteUo = (id: string) => {
-    const updated = uos.filter(u => u.id !== id);
-    saveUos(updated);
-    toast.success("Unidade removida.");
+  const handleDeleteUo = async (id: string) => {
+    try {
+        const res = await fetch(`/api/uos/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            fetchUos();
+            toast.success("Unidade removida.");
+        }
+    } catch(e) {
+        toast.error("Erro ao remover");
+    }
   };
 
   const handleSaveSettings = () => {
@@ -168,7 +175,7 @@ export default function Backoffice() {
                                 {uos.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={3} className="text-center py-4 text-slate-500">
-                                            Nenhuma unidade configurada.
+                                            A carregar ou nenhuma unidade configurada...
                                         </TableCell>
                                     </TableRow>
                                 ) : (
