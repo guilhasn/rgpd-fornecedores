@@ -113,7 +113,6 @@ export default function Index() {
             processos={processosFiltrados} 
             onEdit={handleEdit} 
             onDelete={deleteProcess}
-            formatDate={formatDate}
           />
         )}
 

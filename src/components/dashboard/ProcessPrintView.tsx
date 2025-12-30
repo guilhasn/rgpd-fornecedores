@@ -1,10 +1,21 @@
 import { Process } from "@/types/process";
+import { useEffect, useState } from "react";
 
 interface ProcessPrintViewProps {
   processo: Partial<Process>;
 }
 
 export function ProcessPrintView({ processo }: ProcessPrintViewProps) {
+  const [orgName, setOrgName] = useState("Entidade Responsável");
+
+  useEffect(() => {
+    const savedSettings = localStorage.getItem("org-settings");
+    if (savedSettings) {
+      const { orgName } = JSON.parse(savedSettings);
+      if (orgName) setOrgName(orgName);
+    }
+  }, []);
+
   if (!processo) return null;
 
   const formatDate = (date?: string) => {
@@ -19,8 +30,9 @@ export function ProcessPrintView({ processo }: ProcessPrintViewProps) {
       {/* Header */}
       <div className="border-b-2 border-slate-900 pb-4 mb-8 flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold uppercase tracking-wider">Ficha de Conformidade RGPD</h1>
-          <p className="text-sm text-slate-600 mt-1">Registo de Atividade de Tratamento - Subcontratante/Fornecedor</p>
+          <h1 className="text-xl font-bold uppercase tracking-wider text-slate-900">{orgName}</h1>
+          <h2 className="text-lg text-slate-700 mt-1">Ficha de Conformidade RGPD</h2>
+          <p className="text-xs text-slate-500 mt-1">Registo de Atividade de Tratamento - Subcontratante/Fornecedor</p>
         </div>
         <div className="text-right">
           <div className="text-xl font-bold">{processo.referencia}</div>
