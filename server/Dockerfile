@@ -10,8 +10,8 @@ WORKDIR /app
 # Copy package files first for caching
 COPY package*.json ./
 
-# Install dependencies (clean install)
-RUN npm ci
+# Install dependencies
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -23,7 +23,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Expose the API port
-EXPOSE 3000
+EXPOSE 3001
 
 # Start command:
 # 1. Run migrations to ensure DB is ready
