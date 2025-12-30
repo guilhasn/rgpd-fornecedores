@@ -327,8 +327,9 @@ export default function Index() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
              <Link to="/backoffice">
-               <Button variant="ghost" size="icon" title="Configurações">
-                 <Settings className="w-5 h-5 text-slate-500" />
+               <Button variant="outline" className="gap-2">
+                 <Settings className="w-4 h-4" />
+                 Backoffice
                </Button>
              </Link>
           
