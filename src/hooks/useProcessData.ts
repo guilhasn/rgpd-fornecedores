@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Process } from "@/types/process";
 import { toast } from "sonner";
+import { MOCK_PROCESSES } from "@/data/mock";
 
 export function useProcessData() {
   const [processos, setProcessos] = useState<Process[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
 
   const fetchProcesses = async () => {
     try {
@@ -12,11 +14,14 @@ export function useProcessData() {
       const res = await fetch('/api/processes?limit=100');
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      // The API returns { data: [...], meta: {...} }
       setProcessos(data.data);
+      setIsOffline(false);
     } catch (error) {
-      console.error(error);
-      toast.error("Erro ao carregar dados do servidor.");
+      console.log("Backend indisponível, a usar dados de teste.");
+      if (processos.length === 0) {
+          setProcessos(MOCK_PROCESSES);
+      }
+      setIsOffline(true);
     } finally {
       setIsLoading(false);
     }
@@ -27,6 +32,25 @@ export function useProcessData() {
   }, []);
 
   const addProcess = async (novoProcesso: Partial<Process>) => {
+    if (isOffline) {
+        // Mock implementation
+        const novo: Process = {
+            ...novoProcesso,
+            id: Math.max(0, ...processos.map(p => p.id)) + 1,
+            dataEntrada: new Date().toISOString().split('T')[0],
+            estado: novoProcesso.estado || "Aberto",
+            prioridade: novoProcesso.prioridade || "Média",
+            referencia: novoProcesso.referencia || "N/A",
+            cliente: novoProcesso.cliente || "Novo Cliente",
+            assunto: novoProcesso.assunto || "",
+            historico: novoProcesso.historico || [{ data: new Date().toISOString().split('T')[0], acao: "Criado (Modo Offline)" }]
+        } as Process;
+        
+        setProcessos(prev => [novo, ...prev]);
+        toast.success("Processo criado (Modo Preview)!");
+        return;
+    }
+
     try {
       const res = await fetch('/api/processes', {
         method: 'POST',
@@ -51,6 +75,12 @@ export function useProcessData() {
   const updateProcess = async (processoAtualizado: Partial<Process>) => {
     if (!processoAtualizado.id) return;
     
+    if (isOffline) {
+         setProcessos(prev => prev.map(p => p.id === processoAtualizado.id ? { ...p, ...processoAtualizado } as Process : p));
+         toast.success("Processo atualizado (Modo Preview)!");
+         return;
+    }
+
     try {
       const res = await fetch(`/api/processes/${processoAtualizado.id}`, {
         method: 'PUT',
@@ -70,6 +100,12 @@ export function useProcessData() {
   };
 
   const deleteProcess = async (id: number) => {
+    if (isOffline) {
+        setProcessos(prev => prev.filter(p => p.id !== id));
+        toast.success("Processo removido (Modo Preview).");
+        return;
+    }
+
     try {
       const res = await fetch(`/api/processes/${id}`, {
         method: 'DELETE'
@@ -85,12 +121,15 @@ export function useProcessData() {
   };
 
   const importProcesses = async (novosProcessos: Process[]) => {
-    // For import, we loop and create (simple approach for now)
-    // Ideally this should be a bulk insert API endpoint
+    if (isOffline) {
+        setProcessos(prev => [...novosProcessos, ...prev]);
+        toast.success(`${novosProcessos.length} importados (Modo Preview)`);
+        return;
+    }
+
     try {
         let count = 0;
         for (const p of novosProcessos) {
-            // Remove ID to create new
             const { id, ...rest } = p; 
             await fetch('/api/processes', {
                 method: 'POST',

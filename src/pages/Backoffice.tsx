@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Plus, Save, Trash2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { UnidadeOrganica } from "@/types/process";
+import { MOCK_UOS } from "@/data/mock";
 
 export default function Backoffice() {
   const [uos, setUos] = useState<UnidadeOrganica[]>([]);
@@ -15,21 +16,27 @@ export default function Backoffice() {
   const [newNome, setNewNome] = useState("");
   const [orgName, setOrgName] = useState("");
   const [dpoEmail, setDpoEmail] = useState("");
+  const [isOffline, setIsOffline] = useState(false);
 
   const fetchUos = async () => {
     try {
         const res = await fetch('/api/uos');
-        if(res.ok) setUos(await res.json());
-    } catch(e) { console.error(e); }
+        if(res.ok) {
+            setUos(await res.json());
+            setIsOffline(false);
+        } else {
+            throw new Error("API Error");
+        }
+    } catch(e) { 
+        console.log("Usando UOs de teste");
+        if (uos.length === 0) setUos(MOCK_UOS);
+        setIsOffline(true);
+    }
   };
 
   useEffect(() => {
     fetchUos();
 
-    // Settings still on localStorage for simplicity as requested only CRUD for entities
-    // But logically org settings could be in DB too. 
-    // Keeping settings in localStorage to match specific "tasks required" scope 
-    // which prioritized Process/UO entities in DB.
     const savedOrg = localStorage.getItem("org-settings");
     if (savedOrg) {
       const settings = JSON.parse(savedOrg);
@@ -42,6 +49,19 @@ export default function Backoffice() {
     if (!newSigla || !newNome) {
       toast.error("Preencha a Sigla e o Nome.");
       return;
+    }
+
+    if (isOffline) {
+        const nova: UnidadeOrganica = {
+            id: Math.random().toString(),
+            sigla: newSigla.toUpperCase(),
+            nome: newNome
+        };
+        setUos([...uos, nova]);
+        setNewSigla("");
+        setNewNome("");
+        toast.success("UO adicionada (Preview Mode)");
+        return;
     }
     
     try {
@@ -65,6 +85,12 @@ export default function Backoffice() {
   };
 
   const handleDeleteUo = async (id: string) => {
+    if (isOffline) {
+        setUos(uos.filter(u => u.id !== id));
+        toast.success("UO removida (Preview Mode)");
+        return;
+    }
+
     try {
         const res = await fetch(`/api/uos/${id}`, { method: 'DELETE' });
         if (res.ok) {
@@ -94,6 +120,7 @@ export default function Backoffice() {
           <div>
              <h1 className="text-3xl font-bold text-slate-900">Backoffice</h1>
              <p className="text-slate-500">Configurações globais e gestão de estrutura.</p>
+             {isOffline && <span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded border border-orange-100">Modo Preview (Sem Backend)</span>}
           </div>
         </div>
 
