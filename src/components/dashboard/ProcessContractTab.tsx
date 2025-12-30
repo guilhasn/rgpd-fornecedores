@@ -1,0 +1,132 @@
+`
+`<dyad-write path="src/components/dashboard/ProcessHistoryTab.tsx" ...>`
+
+This looks correct.
+
+However, earlier in the conversation (turn before the last one), I tried to write them into `src/components/dashboard/tabs/ProcessContractTab.tsx`.
+
+In the last turn, I moved them to `src/components/dashboard/ProcessContractTab.tsx`.
+
+If the user is still seeing this error, maybe the file creation failed or I need to explicitly check if the file exists.
+
+Wait, looking at the error message provided by the user:
+`src/components/dashboard/ProcessForm.tsx:8:36 - Cannot find module './ProcessContractTab' or its corresponding type declarations. (TS2307)`
+
+This suggests `ProcessContractTab.tsx` does not exist in `src/components/dashboard/`.
+
+Let's re-write the files just to be absolutely sure they exist at the correct location. It's safer to re-create them.
+
+I will regenerate `src/components/dashboard/ProcessContractTab.tsx` and `src/components/dashboard/ProcessHistoryTab.tsx` to ensure they are present.
+</think><dyad-write path="src/components/dashboard/ProcessContractTab.tsx" description="Re-creating ProcessContractTab in the correct location to fix import error">
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Process, ProcessPriority, ProcessStatus, UnidadeOrganica } from "@/types/process";
+
+interface ProcessContractTabProps {
+  processo: Partial<Process>;
+  setProcesso: (processo: Partial<Process>) => void;
+  uos: UnidadeOrganica[];
+}
+
+export function ProcessContractTab({ processo, setProcesso, uos }: ProcessContractTabProps) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="referencia">Referência Interna</Label>
+          <Input
+            id="referencia"
+            value={processo.referencia || ""}
+            onChange={(e) => setProcesso({ ...processo, referencia: e.target.value })}
+            placeholder="Ex: PROC-2024/001"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="prioridade">Prioridade</Label>
+          <Select
+            value={processo.prioridade}
+            onValueChange={(val) => setProcesso({ ...processo, prioridade: val as ProcessPriority })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Baixa">Baixa</SelectItem>
+              <SelectItem value="Média">Média</SelectItem>
+              <SelectItem value="Alta">Alta</SelectItem>
+              <SelectItem value="Urgente">Urgente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="cliente">Fornecedor / Entidade</Label>
+        <Input
+          id="cliente"
+          value={processo.cliente || ""}
+          onChange={(e) => setProcesso({ ...processo, cliente: e.target.value })}
+          placeholder="Nome da empresa ou entidade"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="unidade">Unidade Orgânica</Label>
+          <Select
+            value={processo.unidadeOrganica}
+            onValueChange={(val) => setProcesso({ ...processo, unidadeOrganica: val })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione a UO..." />
+            </SelectTrigger>
+            <SelectContent>
+              {uos.map(uo => (
+                <SelectItem key={uo.id} value={uo.sigla}>
+                  {uo.sigla} - {uo.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="estado">Estado Atual</Label>
+          <Select
+            value={processo.estado}
+            onValueChange={(val) => setProcesso({ ...processo, estado: val as ProcessStatus })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Aberto">Aberto</SelectItem>
+              <SelectItem value="Em Curso">Em Curso</SelectItem>
+              <SelectItem value="Pendente">Pendente</SelectItem>
+              <SelectItem value="Concluído">Concluído</SelectItem>
+              <SelectItem value="Cancelado">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="assunto">Assunto / Descrição</Label>
+        <Textarea
+          id="assunto"
+          value={processo.assunto || ""}
+          onChange={(e) => setProcesso({ ...processo, assunto: e.target.value })}
+          placeholder="Descrição resumida do contrato ou serviço..."
+          className="h-32"
+        />
+      </div>
+    </div>
+  );
+}
