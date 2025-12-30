@@ -7,7 +7,8 @@ import {
   Download,
   Upload,
   Filter,
-  X
+  X,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import { ProcessKanban } from "@/components/dashboard/ProcessKanban";
 import { ProcessForm } from "@/components/dashboard/ProcessForm";
 import { DashboardAlerts } from "@/components/dashboard/DashboardAlerts";
 import { DashboardActivity } from "@/components/dashboard/DashboardActivity";
+import { Link } from "react-router-dom";
 
 // --- DADOS INICIAIS ---
 const DADOS_EXEMPLO: Process[] = [
@@ -57,7 +59,8 @@ const DADOS_EXEMPLO: Process[] = [
       tipoDadosPessoais: "Nome Completo, Email (Pessoal/Profissional)",
       finalidadeTratamento: "Gestão de acessos",
       nif: "501234567"
-    }
+    },
+    unidadeOrganica: "IT"
   },
   {
     id: 2,
@@ -74,7 +77,8 @@ const DADOS_EXEMPLO: Process[] = [
         nivelRisco: "Baixo",
         temAcessoDados: "Não",
         nif: "509876543"
-    }
+    },
+    unidadeOrganica: "DAF"
   }
 ];
 
@@ -322,6 +326,12 @@ export default function Index() {
             <p className="text-slate-500 mt-1">Dashboard de Conformidade e Avaliação de Risco</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+             <Link to="/backoffice">
+               <Button variant="ghost" size="icon" title="Configurações">
+                 <Settings className="w-5 h-5 text-slate-500" />
+               </Button>
+             </Link>
+          
             <input 
               type="file" 
               accept=".csv" 

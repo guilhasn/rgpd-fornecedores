@@ -10,9 +10,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Process, ProcessPriority, ProcessStatus } from "@/types/process";
+import { Process, ProcessPriority, ProcessStatus, UnidadeOrganica } from "@/types/process";
 import { ProcessGdprForm } from "./ProcessGdprForm";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CalendarIcon, History, Printer, Save, Send, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProcessPrintView } from "./ProcessPrintView";
@@ -27,6 +27,23 @@ interface ProcessFormProps {
 export function ProcessForm({ processo, setProcesso, onSave, formatDate }: ProcessFormProps) {
   const [activeTab, setActiveTab] = useState("contrato");
   const [newNote, setNewNote] = useState("");
+  const [uos, setUos] = useState<UnidadeOrganica[]>([]);
+
+  useEffect(() => {
+    // Load UOs from local storage
+    const saved = localStorage.getItem("uos-db");
+    if (saved) {
+      setUos(JSON.parse(saved));
+    } else {
+      // Fallback defaults if not yet initialized in Backoffice
+       setUos([
+        { id: "1", sigla: "DAF", nome: "Departamento Administrativo e Financeiro" },
+        { id: "2", sigla: "DOM", nome: "Departamento de Obras Municipais" },
+        { id: "3", sigla: "RH", nome: "Recursos Humanos" },
+        { id: "4", sigla: "IT", nome: "Tecnologias de Informação" },
+      ]);
+    }
+  }, []);
 
   const addNote = () => {
     if (!newNote.trim()) return;
@@ -112,12 +129,21 @@ export function ProcessForm({ processo, setProcesso, onSave, formatDate }: Proce
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="unidade">Unidade Orgânica</Label>
-                  <Input
-                    id="unidade"
-                    value={processo.unidadeOrganica || ""}
-                    onChange={(e) => setProcesso({ ...processo, unidadeOrganica: e.target.value })}
-                    placeholder="Departamento"
-                  />
+                  <Select
+                    value={processo.unidadeOrganica}
+                    onValueChange={(val) => setProcesso({ ...processo, unidadeOrganica: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a UO..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uos.map(uo => (
+                        <SelectItem key={uo.id} value={uo.sigla}>
+                          {uo.sigla} - {uo.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="estado">Estado Atual</Label>

@@ -7,6 +7,12 @@ export interface ProcessHistory {
   user?: string;
 }
 
+export interface UnidadeOrganica {
+  id: string;
+  sigla: string;
+  nome: string;
+}
+
 export interface SupplierData {
   nif?: string;
   dataInicioContrato?: string;
