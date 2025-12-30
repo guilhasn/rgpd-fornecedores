@@ -58,8 +58,8 @@ export function ProcessForm({ processo, setProcesso, onSave, formatDate }: Proce
             </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <div className="px-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+          <div className="px-1 flex-none">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="contrato">Dados Contrato</TabsTrigger>
               <TabsTrigger value="rgpd">Análise RGPD</TabsTrigger>
@@ -67,9 +67,9 @@ export function ProcessForm({ processo, setProcesso, onSave, formatDate }: Proce
             </TabsList>
           </div>
 
-          <div className="flex-1 mt-4 overflow-y-auto px-1 min-h-[400px]">
+          <div className="flex-1 mt-4 overflow-y-auto px-1 min-h-0">
             {/* TAB 1: DADOS GERAIS DO CONTRATO */}
-            <TabsContent value="contrato" className="space-y-4 focus-visible:ring-0">
+            <TabsContent value="contrato" className="space-y-4 focus-visible:ring-0 mt-0">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="referencia">Referência Interna</Label>
@@ -152,15 +152,15 @@ export function ProcessForm({ processo, setProcesso, onSave, formatDate }: Proce
             </TabsContent>
 
             {/* TAB 2: ANÁLISE RGPD */}
-            <TabsContent value="rgpd" className="focus-visible:ring-0">
+            <TabsContent value="rgpd" className="focus-visible:ring-0 mt-0">
                <div className="p-1">
                   <ProcessGdprForm processo={processo} setProcesso={setProcesso} />
                </div>
             </TabsContent>
 
             {/* TAB 3: HISTÓRICO E NOTAS */}
-            <TabsContent value="historico" className="focus-visible:ring-0 h-full flex flex-col gap-4">
-              <div className="flex gap-2">
+            <TabsContent value="historico" className="focus-visible:ring-0 h-full flex flex-col gap-4 mt-0">
+              <div className="flex gap-2 flex-none">
                 <Input 
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
@@ -173,7 +173,7 @@ export function ProcessForm({ processo, setProcesso, onSave, formatDate }: Proce
                 </Button>
               </div>
 
-              <ScrollArea className="flex-1 border rounded-md p-4 bg-slate-50 h-[300px]">
+              <ScrollArea className="flex-1 border rounded-md p-4 bg-slate-50">
                 {!processo.historico || processo.historico.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
                     <History className="h-8 w-8 opacity-20" />
@@ -214,7 +214,7 @@ export function ProcessForm({ processo, setProcesso, onSave, formatDate }: Proce
             </TabsContent>
           </div>
 
-          <div className="pt-6 mt-auto">
+          <div className="pt-4 mt-auto flex-none border-t border-slate-100 bg-white">
             <Button onClick={onSave} className="w-full bg-slate-900 hover:bg-slate-800">
               <Save className="mr-2 h-4 w-4" /> Guardar Processo
             </Button>
