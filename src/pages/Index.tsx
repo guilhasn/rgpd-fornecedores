@@ -343,19 +343,21 @@ export default function Index() {
                   <Plus className="mr-2 h-4 w-4" /> Novo Processo
                 </Button>
               </SheetTrigger>
-              <SheetContent className="sm:max-w-2xl w-full print:border-none print:shadow-none print:max-w-none print:w-full print:h-full print:p-0">
-                <SheetHeader className="mb-6 print:hidden">
+              <SheetContent className="sm:max-w-2xl w-full print:border-none print:shadow-none print:max-w-none print:w-full print:h-full print:p-0 flex flex-col">
+                <SheetHeader className="mb-6 print:hidden flex-none">
                   <SheetTitle>{processoAtual.id ? `Editar ${processoAtual.referencia}` : "Novo Processo"}</SheetTitle>
                   <SheetDescription>
                     Gere os detalhes contratuais e a avaliação de impacto RGPD.
                   </SheetDescription>
                 </SheetHeader>
-                <ProcessForm 
-                  processo={processoAtual} 
-                  setProcesso={setProcessoAtual} 
-                  onSave={handleSave}
-                  formatDate={formatDate}
-                />
+                <div className="flex-1 overflow-hidden">
+                  <ProcessForm 
+                    processo={processoAtual} 
+                    setProcesso={setProcessoAtual} 
+                    onSave={handleSave}
+                    formatDate={formatDate}
+                  />
+                </div>
               </SheetContent>
             </Sheet>
           </div>
