@@ -3,52 +3,34 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Clean existing data
-  await prisma.processHistory.deleteMany();
-  await prisma.processGdpr.deleteMany();
-  await prisma.process.deleteMany();
-  await prisma.unidadeOrganica.deleteMany();
+  console.log('🌱 Starting database seed...');
 
-  // Seed UOs
-  await prisma.unidadeOrganica.createMany({
-    data: [
-      { id: "1", sigla: "DAF", nome: "Departamento Administrativo e Financeiro" },
-      { id: "2", sigla: "DOM", nome: "Departamento de Obras Municipais" },
-      { id: "3", sigla: "RH", nome: "Recursos Humanos" },
-      { id: "4", sigla: "IT", nome: "Tecnologias de Informação" },
-    ]
-  });
+  const unidades = [
+    { sigla: 'IT', nome: 'Tecnologias de Informação' },
+    { sigla: 'RH', nome: 'Recursos Humanos' },
+    { sigla: 'FIN', nome: 'Departamento Financeiro' },
+    { sigla: 'JUR', nome: 'Gabinete Jurídico' },
+    { sigla: 'COM', nome: 'Comercial e Marketing' },
+    { sigla: 'LOG', nome: 'Logística e Armazém' },
+    { sigla: 'ADM', nome: 'Administração' }
+  ];
 
-  // Seed Processes
-  const p1 = await prisma.process.create({
-    data: {
-      referencia: "PROC-2024/001",
-      cliente: "Limpezas & Brilho Lda",
-      assunto: "Serviços de limpeza das instalações municipais",
-      unidadeOrganica: "DAF",
-      estado: "Em Curso",
-      prioridade: "Alta",
-      rgpd: {
-        create: {
-          nif: "501234567",
-          dataInicioContrato: "2024-01-01",
-          dataFimContrato: "2024-12-31",
-          temAcessoDados: "Sim",
-          tipoDadosPessoais: "Nomes, Horários dos funcionários",
-          nivelRisco: "Baixo",
-          medidasSeguranca: "Contrato de confidencialidade assinado"
-        }
-      },
-      historico: {
-        create: [
-          { data: "2024-01-01", acao: "Processo criado", user: "Admin" },
-          { data: "2024-01-15", acao: "Validado pelo DPO", user: "DPO" }
-        ]
-      }
+  for (const uo of unidades) {
+    const exists = await prisma.unidadeOrganica.findFirst({
+      where: { sigla: uo.sigla }
+    });
+
+    if (!exists) {
+      await prisma.unidadeOrganica.create({
+        data: uo
+      });
+      console.log(`✅ Created UO: ${uo.sigla}`);
+    } else {
+      console.log(`ℹ️  UO already exists: ${uo.sigla}`);
     }
-  });
+  }
 
-  console.log({ p1 });
+  console.log('🏁 Seeding finished.');
 }
 
 main()

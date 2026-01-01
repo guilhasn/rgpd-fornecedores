@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Plus, Download, Upload, Settings } from "lucide-react";
+import { Plus, Download, Upload, Settings, Database, HardDrive } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Sheet,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { ProcessForm } from "./ProcessForm";
 import { Process } from "@/types/process";
+import { Badge } from "@/components/ui/badge";
 
 interface DashboardHeaderProps {
   onExport: () => void;
@@ -39,10 +40,26 @@ export function DashboardHeader({
   onNew,
   formatDate
 }: DashboardHeaderProps) {
+  
+  const mode = import.meta.env.VITE_STORAGE_MODE === 'api' ? 'api' : 'local';
+
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Gestão de Fornecedores & RGPD</h1>
+        <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Gestão de Fornecedores & RGPD</h1>
+            {mode === 'api' ? (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1.5 hidden md:flex">
+                    <Database className="w-3 h-3" />
+                    PROD (API)
+                </Badge>
+            ) : (
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1.5 hidden md:flex">
+                    <HardDrive className="w-3 h-3" />
+                    DEMO (Local)
+                </Badge>
+            )}
+        </div>
         <p className="text-slate-500 mt-1">Dashboard de Conformidade e Avaliação de Risco</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">

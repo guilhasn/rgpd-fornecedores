@@ -13,14 +13,13 @@ COPY package*.json ./
 # Copy Prisma Schema
 COPY prisma ./prisma/
 
-# Install Dependencies (triggers postinstall -> prisma generate)
-# Using npm ci would be better if lockfile existed, but npm install is fine here
+# Install Dependencies
 RUN npm install
 
-# Explicitly Generate Prisma Client again to be 100% sure it exists in this layer
+# Generate Prisma Client
 RUN npx prisma generate
 
-# Copy Source Code (respects .dockerignore)
+# Copy Source Code
 COPY . .
 
 # Build the Application
@@ -30,4 +29,4 @@ RUN npm run build
 EXPOSE 3001
 
 # Start Command
-CMD ["/bin/sh", "-c", "npx prisma migrate deploy && npm start"]
+CMD ["/bin/sh", "-c", "npx prisma migrate deploy && npx prisma db seed && npm start"]
