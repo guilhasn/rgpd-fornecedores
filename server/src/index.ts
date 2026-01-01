@@ -19,7 +19,7 @@ const ProcessSchema = z.object({
   prioridade: z.string(),
   dataEntrada: z.string().transform((str) => new Date(str)),
   unidadeOrganicaId: z.string(),
-  user: z.string().optional().default('Sistema'), // Ensure user is always a string
+  user: z.string().optional().default('Sistema'),
 });
 
 const GdprSchema = z.object({
@@ -77,7 +77,7 @@ app.get('/api/processes/:id', async (req, res) => {
         unidadeOrganica: true,
         rgpd: true,
         historico: {
-          orderBy: { data: 'desc' } // Fixed: Changed createdAt to data
+          orderBy: { data: 'desc' } // Fixed: Changed from createdAt to data
         }
       }
     });
@@ -100,14 +100,14 @@ app.post('/api/processes', async (req, res) => {
         estado: data.estado,
         prioridade: data.prioridade,
         dataEntrada: data.dataEntrada,
-        // Fixed: Prisma relation connection syntax
+        // Fixed: Use connect syntax instead of direct assignment
         unidadeOrganica: {
             connect: { id: data.unidadeOrganicaId }
         },
         historico: {
           create: {
             acao: 'Processo criado',
-            user: data.user, // Fixed: Zod ensures this is string
+            user: data.user || 'Sistema', // Ensure string
             data: new Date()
           }
         }
@@ -128,8 +128,9 @@ app.put('/api/processes/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
     const data = ProcessSchema.partial().parse(req.body);
-    const user = req.body.user || 'Sistema';
+    const userStr = req.body.user || 'Sistema';
 
+    // Use any to construct the update object dynamically
     const updateData: any = { ...data };
     
     // Fixed: Handle relation update correctly
@@ -137,10 +138,11 @@ app.put('/api/processes/:id', async (req, res) => {
         updateData.unidadeOrganica = {
             connect: { id: data.unidadeOrganicaId }
         };
+        // Remove the raw ID field to avoid Prisma errors
         delete updateData.unidadeOrganicaId;
     }
     
-    // Remove user from updateData as it's not part of Process model
+    // Remove user field as it belongs to history, not process
     delete updateData.user;
 
     const updatedProcess = await prisma.process.update({
@@ -154,7 +156,7 @@ app.put('/api/processes/:id', async (req, res) => {
       data: {
         processId: id,
         acao: 'Processo atualizado',
-        user: user,
+        user: String(userStr),
         data: new Date()
       }
     });
@@ -171,7 +173,7 @@ app.put('/api/processes/:id/gdpr', async (req, res) => {
   try {
     const id = Number(req.params.id);
     const data = GdprSchema.parse(req.body);
-    const user = req.body.user || 'Sistema';
+    const userStr = req.body.user || 'Sistema';
 
     const updatedGdpr = await prisma.processGdpr.upsert({
       where: { processId: id },
@@ -186,7 +188,7 @@ app.put('/api/processes/:id/gdpr', async (req, res) => {
       data: {
         processId: id,
         acao: 'Informação RGPD atualizada',
-        user: String(user),
+        user: String(userStr),
         data: new Date()
       }
     });
