@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -7,41 +8,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model UnidadeOrganica {
+  id        String    @id @default(uuid())
+  sigla     String    @unique
+  nome      String
+  processos Process[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("unidades_organicas")
+}
+
 model Process {
-  id              Int             @id @default(autoincrement())
-  referencia      String          @unique
-  cliente         String
-  assunto         String?
-  unidadeOrganica String
-  estado          String
-  prioridade      String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  
-  rgpd            ProcessGdpr?
-  historico       ProcessHistory[]
+  id                Int             @id @default(autoincrement())
+  referencia        String          @unique
+  cliente           String
+  assunto           String
+  estado            String
+  prioridade        String
+  dataEntrada       DateTime
+  unidadeOrganicaId String
+  unidadeOrganica   UnidadeOrganica @relation(fields: [unidadeOrganicaId], references: [id])
+  rgpd              ProcessGdpr?
+  historico         ProcessHistory[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@map("processes")
 }
 
 model ProcessGdpr {
-  id                        Int      @id @default(autoincrement())
-  processId                 Int      @unique
-  process                   Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
-  
-  nif                       String?
-  dataInicioContrato        String?
-  dataFimContrato           String?
-  temAcessoDados            String?  // "Sim" | "Não"
-  tipoDadosPessoais         String?
-  finalidadeTratamento      String?
-  transferenciaInternacional String? // "Sim" | "Não"
-  paisTransferencia         String?
-  subcontratacao            String?  // "Sim" | "Não"
-  nivelRisco                String?  // "Baixo" | "Médio" | "Alto" | "Crítico"
-  medidasSeguranca          String?
-  responsavelContrato       String?
-  emailResponsavel          String?
+  id                         Int      @id @default(autoincrement())
+  processId                  Int      @unique
+  process                    Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  nif                        String?
+  dataInicioContrato         DateTime?
+  dataFimContrato            DateTime?
+  temAcessoDados             String?
+  tipoDadosPessoais          String?
+  nivelRisco                 String?
+  medidasSeguranca           String?
+  finalidadeTratamento       String?
+  subcontratacao             String?
+  transferenciaInternacional String?
 
   @@map("process_gdpr")
 }
@@ -50,19 +59,9 @@ model ProcessHistory {
   id        Int      @id @default(autoincrement())
   processId Int
   process   Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
-  
-  data      String   // ISO Date String YYYY-MM-DD
+  data      DateTime @default(now())
   acao      String
-  user      String?
-  createdAt DateTime @default(now())
-
+  user      String
+  
   @@map("process_history")
-}
-
-model UnidadeOrganica {
-  id    String @id @default(uuid())
-  sigla String @unique
-  nome  String
-
-  @@map("unidades_organicas")
 }

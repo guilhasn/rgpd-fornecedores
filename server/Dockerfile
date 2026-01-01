@@ -1,31 +1,35 @@
 FROM node:20-bookworm-slim
 
-# Install OpenSSL and ca-certificates (Required for Prisma)
+# 1. Install System Dependencies
+# OpenSSL is required for Prisma Client
 RUN apt-get update -y && \
     apt-get install -y openssl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy package files first for caching
+# 2. Copy Package Definition
 COPY package*.json ./
 
-# Install dependencies
+# 3. Install Dependencies
+# Using npm install instead of ci to be more forgiving if lockfile is missing
 RUN npm install
 
-# Copy source code
+# 4. Copy Source Code
 COPY . .
 
-# Generate Prisma Client (Must be done before build)
+# 5. Generate Prisma Client
+# This must be done before the build so the types exist
 RUN npx prisma generate
 
-# Build the application (Transpile TS to JS)
+# 6. Build the Application
+# This runs 'tsc', creating the 'dist' folder
 RUN npm run build
 
-# Expose the API port
+# 7. Expose Port
 EXPOSE 3001
 
-# Start command:
-# 1. Run migrations to ensure DB is ready
-# 2. Start the application
+# 8. Start Command
+# - Applies migrations
+# - Starts the node application from the build artifact
 CMD ["/bin/sh", "-c", "npx prisma migrate deploy && npm start"]

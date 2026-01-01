@@ -1,70 +1,37 @@
 # RGPD Gestão de Fornecedores
 
-Aplicação para gestão de conformidade RGPD de fornecedores e subcontratantes.
+Aplicação para gestão de processos de fornecedores e conformidade RGPD.
 
-## Stack Tecnológica
+## Estrutura
+- **Frontend**: React + Vite + Tailwind (Porta 8080)
+- **Backend**: Node.js + Express + Prisma (Porta 3001 - Interna)
+- **Database**: PostgreSQL (Porta 5432 - Interna)
 
-- **Frontend:** React + Vite (Port 80 via Nginx)
-- **Backend:** Node.js + Express (Port 3001 internal)
-- **Database:** PostgreSQL 15 (Port 5432 internal)
-- **ORM:** Prisma
-- **Infra:** Docker Compose
+## Como Correr (Docker)
 
-## Pré-requisitos
+A aplicação está configurada para correr totalmente em Docker.
 
-1. Docker e Docker Compose instalados.
-2. Network externa `proxy` criada (para o reverse proxy):
-   ```bash
-   docker network create proxy
-   ```
-
-## Instalação e Execução (Docker)
-
-Esta é a forma recomendada de executar a aplicação completa (Frontend + Backend + BD).
-
-1. Construir e iniciar os contentores:
+1. **Construir e Iniciar:**
    ```bash
    docker compose up -d --build
    ```
-   *Nota: O build do Docker utiliza `npm` para garantir a resolução correta das dependências.*
 
-2. A API irá correr automaticamente as migrações da base de dados no arranque.
+2. **Aceder à Aplicação:**
+   - Frontend: http://localhost:8080
+   - A API é acessível internamente ou via proxy em http://localhost:8080/api
 
-3. Aceder à aplicação:
-   - URL configurado no `VIRTUAL_HOST` (default: `http://rgpd.local`)
-   - Se estiver local, adicione `127.0.0.1 rgpd.local` ao seu ficheiro hosts.
+3. **Verificar Estado da Base de Dados:**
+   ```bash
+   # Listar tabelas criadas
+   docker compose exec db psql -U user -d mydatabase -c "\dt"
+   ```
 
-## Desenvolvimento Local
+## Resolução de Problemas Comuns
 
-Se preferir correr localmente sem Docker:
-
-### Backend
-```bash
-cd server
-npm install
-# Configure o .env com a sua BD local
-npm run dev
-```
-
-### Frontend
-```bash
-# Na raiz do projeto
-npm install
-npm run dev
-```
-
-## Gestão da Base de Dados
-
-### Verificar tabelas
-```bash
-docker compose exec db psql -U user -d mydatabase -c "\dt"
-```
-
-### Popular com dados de teste (Seed)
-```bash
-docker compose exec api npm run db:seed
-```
-
-### Reset à base de dados
-```bash
-docker compose exec api npx prisma migrate reset
+- **Erro "Prisma failed to detect libssl":** O Dockerfile usa `node:20-bookworm-slim` para garantir compatibilidade com OpenSSL 3.
+- **Erro "Cannot find module dist/index.js":** Certifique-se que o passo `RUN npm run build` completou com sucesso no Dockerfile.
+- **Reiniciar Migrações:** Se necessário limpar tudo:
+  ```bash
+  docker compose down -v
+  docker compose up -d --build
+  ```
