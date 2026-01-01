@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Plus, Save, Trash2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { UnidadeOrganica } from "@/types/process";
-import { MOCK_UOS } from "@/data/mock";
+import { processRepository } from "@/services/processRepository";
 
 export default function Backoffice() {
   const [uos, setUos] = useState<UnidadeOrganica[]>([]);
@@ -16,21 +16,14 @@ export default function Backoffice() {
   const [newNome, setNewNome] = useState("");
   const [orgName, setOrgName] = useState("");
   const [dpoEmail, setDpoEmail] = useState("");
-  const [isOffline, setIsOffline] = useState(false);
 
   const fetchUos = async () => {
     try {
-        const res = await fetch('/api/uos');
-        if(res.ok) {
-            setUos(await res.json());
-            setIsOffline(false);
-        } else {
-            throw new Error("API Error");
-        }
+        const data = await processRepository.getUnidadesOrganicas();
+        setUos(data);
     } catch(e) { 
-        console.log("Usando UOs de teste");
-        if (uos.length === 0) setUos(MOCK_UOS);
-        setIsOffline(true);
+        console.error(e);
+        toast.error("Erro ao carregar UOs");
     }
   };
 
@@ -50,56 +43,41 @@ export default function Backoffice() {
       toast.error("Preencha a Sigla e o Nome.");
       return;
     }
-
-    if (isOffline) {
-        const nova: UnidadeOrganica = {
-            id: Math.random().toString(),
-            sigla: newSigla.toUpperCase(),
-            nome: newNome
-        };
-        setUos([...uos, nova]);
-        setNewSigla("");
-        setNewNome("");
-        toast.success("UO adicionada (Preview Mode)");
+    
+    // Note: Creating UOs is not yet in the Interface, assuming read-only for now or 
+    // we would need to add createUnidadeOrganica to the interface.
+    // For now, alerting user if in API mode that this feature is partial.
+    if (import.meta.env.VITE_STORAGE_MODE === 'api') {
+        toast.error("Funcionalidade de criar UOs apenas disponível via Database Seed neste momento.");
         return;
     }
     
-    try {
-        const res = await fetch('/api/uos', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ sigla: newSigla.toUpperCase(), nome: newNome })
-        });
-        
-        if(res.ok) {
-            fetchUos();
-            setNewSigla("");
-            setNewNome("");
-            toast.success("Unidade Orgânica adicionada!");
-        } else {
-            toast.error("Erro ao criar UO");
-        }
-    } catch (e) {
-        toast.error("Erro de conexão");
-    }
+    // Local Mode fallback logic (keeps existing behavior for demo)
+    const nova: UnidadeOrganica = {
+        id: Math.random().toString(),
+        sigla: newSigla.toUpperCase(),
+        nome: newNome
+    };
+    // Dirty hack for local storage demo since interface doesn't support write UO yet
+    const current = JSON.parse(localStorage.getItem("dyad_demo_uos") || "[]");
+    localStorage.setItem("dyad_demo_uos", JSON.stringify([...current, nova]));
+    
+    fetchUos();
+    setNewSigla("");
+    setNewNome("");
+    toast.success("UO adicionada (Local Demo)");
   };
 
   const handleDeleteUo = async (id: string) => {
-    if (isOffline) {
-        setUos(uos.filter(u => u.id !== id));
-        toast.success("UO removida (Preview Mode)");
+     if (import.meta.env.VITE_STORAGE_MODE === 'api') {
+        toast.error("Apenas via Database Admin.");
         return;
     }
-
-    try {
-        const res = await fetch(`/api/uos/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-            fetchUos();
-            toast.success("Unidade removida.");
-        }
-    } catch(e) {
-        toast.error("Erro ao remover");
-    }
+    const current = JSON.parse(localStorage.getItem("dyad_demo_uos") || "[]");
+    const filtered = current.filter((u: any) => u.id !== id);
+    localStorage.setItem("dyad_demo_uos", JSON.stringify(filtered));
+    fetchUos();
+    toast.success("UO removida (Local Demo)");
   };
 
   const handleSaveSettings = () => {
@@ -120,7 +98,7 @@ export default function Backoffice() {
           <div>
              <h1 className="text-3xl font-bold text-slate-900">Backoffice</h1>
              <p className="text-slate-500">Configurações globais e gestão de estrutura.</p>
-             {isOffline && <span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded border border-orange-100">Modo Preview (Sem Backend)</span>}
+             <span className="text-xs text-slate-400">Modo de Armazenamento: {import.meta.env.VITE_STORAGE_MODE || 'Local'}</span>
           </div>
         </div>
 
@@ -202,7 +180,7 @@ export default function Backoffice() {
                                 {uos.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={3} className="text-center py-4 text-slate-500">
-                                            A carregar ou nenhuma unidade configurada...
+                                            A carregar...
                                         </TableCell>
                                     </TableRow>
                                 ) : (

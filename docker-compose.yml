@@ -43,6 +43,8 @@ services:
     depends_on:
       - api
     environment:
+      - VITE_STORAGE_MODE=api
+      - VITE_API_BASE=/api
       - VIRTUAL_HOST=${VIRTUAL_HOST:-rgpd.local}
       - VIRTUAL_PORT=80
       - LETSENCRYPT_HOST=${VIRTUAL_HOST:-rgpd.local}

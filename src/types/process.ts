@@ -14,6 +14,8 @@ export interface UnidadeOrganica {
 }
 
 export interface SupplierData {
+  id?: number;
+  processId?: number;
   nif?: string;
   dataInicioContrato?: string;
   dataFimContrato?: string;
@@ -39,7 +41,11 @@ export interface Process {
   estado: ProcessStatus;
   prioridade: ProcessPriority;
   dataEntrada: string;
-  unidadeOrganica?: string;
+  
+  // Relations
+  unidadeOrganicaId?: string; // For sending to Backend
+  unidadeOrganica?: string | UnidadeOrganica; // For Display (simpler to keep string for now or object)
+  
   historico?: ProcessHistory[];
-  rgpd?: SupplierData; // New container for GDPR fields
+  rgpd?: SupplierData; 
 }

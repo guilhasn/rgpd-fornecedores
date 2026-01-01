@@ -7,6 +7,7 @@ import { ProcessGdprForm } from "./ProcessGdprForm";
 import { ProcessPrintView } from "./ProcessPrintView";
 import { ProcessContractTab } from "./ProcessContractTab";
 import { ProcessHistoryTab } from "./ProcessHistoryTab";
+import { processRepository } from "@/services/processRepository";
 
 interface ProcessFormProps {
   processo: Partial<Process>;
@@ -20,19 +21,10 @@ export function ProcessForm({ processo, setProcesso, onSave, formatDate }: Proce
   const [uos, setUos] = useState<UnidadeOrganica[]>([]);
 
   useEffect(() => {
-    // Load UOs from local storage
-    const saved = localStorage.getItem("uos-db");
-    if (saved) {
-      setUos(JSON.parse(saved));
-    } else {
-      // Fallback defaults if not yet initialized in Backoffice
-       setUos([
-        { id: "1", sigla: "DAF", nome: "Departamento Administrativo e Financeiro" },
-        { id: "2", sigla: "DOM", nome: "Departamento de Obras Municipais" },
-        { id: "3", sigla: "RH", nome: "Recursos Humanos" },
-        { id: "4", sigla: "IT", nome: "Tecnologias de Informação" },
-      ]);
-    }
+    // Load UOs using the repository (works for both Local and API)
+    processRepository.getUnidadesOrganicas()
+      .then(setUos)
+      .catch(console.error);
   }, []);
 
   const handlePrint = () => {

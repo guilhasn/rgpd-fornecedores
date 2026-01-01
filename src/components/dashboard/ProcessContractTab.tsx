@@ -17,6 +17,23 @@ interface ProcessContractTabProps {
 }
 
 export function ProcessContractTab({ processo, setProcesso, uos }: ProcessContractTabProps) {
+  
+  // Helper to handle UO selection
+  const handleUoChange = (uoId: string) => {
+    const uo = uos.find(u => u.id === uoId);
+    if (!uo) return;
+    
+    setProcesso({
+        ...processo,
+        unidadeOrganicaId: uo.id,
+        unidadeOrganica: uo.sigla // Keep sigla for display/local mode consistency
+    });
+  };
+
+  // Determine current value
+  const currentUoValue = processo.unidadeOrganicaId || 
+    uos.find(u => u.sigla === processo.unidadeOrganica)?.id;
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -62,15 +79,15 @@ export function ProcessContractTab({ processo, setProcesso, uos }: ProcessContra
         <div className="space-y-2">
           <Label htmlFor="unidade">Unidade Orgânica</Label>
           <Select
-            value={processo.unidadeOrganica}
-            onValueChange={(val) => setProcesso({ ...processo, unidadeOrganica: val })}
+            value={currentUoValue}
+            onValueChange={handleUoChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione a UO..." />
             </SelectTrigger>
             <SelectContent>
               {uos.map(uo => (
-                <SelectItem key={uo.id} value={uo.sigla}>
+                <SelectItem key={uo.id} value={uo.id}>
                   {uo.sigla} - {uo.nome}
                 </SelectItem>
               ))}
@@ -97,6 +114,18 @@ export function ProcessContractTab({ processo, setProcesso, uos }: ProcessContra
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         <div className="space-y-2">
+            <Label htmlFor="dataEntrada">Data de Entrada</Label>
+            <Input 
+                id="dataEntrada"
+                type="date"
+                value={processo.dataEntrada ? new Date(processo.dataEntrada).toISOString().split('T')[0] : ""}
+                onChange={(e) => setProcesso({...processo, dataEntrada: e.target.value})}
+            />
+         </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="assunto">Assunto / Descrição</Label>
         <Textarea
@@ -104,7 +133,7 @@ export function ProcessContractTab({ processo, setProcesso, uos }: ProcessContra
           value={processo.assunto || ""}
           onChange={(e) => setProcesso({ ...processo, assunto: e.target.value })}
           placeholder="Descrição resumida do contrato ou serviço..."
-          className="h-32"
+          className="h-24"
         />
       </div>
     </div>

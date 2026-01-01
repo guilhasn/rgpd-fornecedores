@@ -2,14 +2,26 @@
 
 Aplicação para gestão de processos de fornecedores e conformidade RGPD.
 
-## Estrutura
-- **Frontend**: React + Vite + Tailwind (Porta 8080)
-- **Backend**: Node.js + Express + Prisma (Porta 3001 - Interna)
-- **Database**: PostgreSQL (Porta 5432 - Interna)
+## Modos de Funcionamento
+
+A aplicação suporta dois modos de persistência, configuráveis via `.env`:
+
+### 1. Modo Demo (Local)
+Guarda os dados no `localStorage` do browser. Ideal para demonstração rápida ou desenvolvimento frontend isolado.
+```ini
+VITE_STORAGE_MODE=local
+```
+
+### 2. Modo Produção (API)
+Guarda os dados no PostgreSQL através da API Node.js.
+```ini
+VITE_STORAGE_MODE=api
+VITE_API_BASE=/api
+```
 
 ## Como Correr (Docker)
 
-A aplicação está configurada para correr totalmente em Docker.
+A aplicação está configurada para correr totalmente em Docker. O `docker-compose.yml` já configura o ambiente para usar a API.
 
 1. **Construir e Iniciar:**
    ```bash
@@ -26,12 +38,8 @@ A aplicação está configurada para correr totalmente em Docker.
    docker compose exec db psql -U user -d mydatabase -c "\dt"
    ```
 
-## Resolução de Problemas Comuns
+## Desenvolvimento Local
 
-- **Erro "Prisma failed to detect libssl":** O Dockerfile usa `node:20-bookworm-slim` para garantir compatibilidade com OpenSSL 3.
-- **Erro "Cannot find module dist/index.js":** Certifique-se que o passo `RUN npm run build` completou com sucesso no Dockerfile.
-- **Reiniciar Migrações:** Se necessário limpar tudo:
-  ```bash
-  docker compose down -v
-  docker compose up -d --build
-  ```
+Para correr o frontend localmente contra a API local:
+1. `cd server && npm install && npm run dev`
+2. `npm install && npm run dev`

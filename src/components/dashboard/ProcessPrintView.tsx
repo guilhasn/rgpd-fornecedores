@@ -1,4 +1,4 @@
-import { Process } from "@/types/process";
+import { Process, UnidadeOrganica } from "@/types/process";
 import { useEffect, useState } from "react";
 
 interface ProcessPrintViewProps {
@@ -21,6 +21,12 @@ export function ProcessPrintView({ processo }: ProcessPrintViewProps) {
   const formatDate = (date?: string) => {
     if (!date) return "Não definido";
     return date;
+  };
+
+  const getUoLabel = (uo?: string | UnidadeOrganica) => {
+    if (!uo) return "-";
+    if (typeof uo === 'string') return uo;
+    return uo.sigla;
   };
 
   const rgpd = processo.rgpd || {};
@@ -58,7 +64,9 @@ export function ProcessPrintView({ processo }: ProcessPrintViewProps) {
           </div>
           <div>
             <span className="block text-xs font-semibold text-slate-500">Unidade Orgânica</span>
-            <div className="font-medium p-1 border-b border-slate-100">{processo.unidadeOrganica || "-"}</div>
+            <div className="font-medium p-1 border-b border-slate-100">
+                {getUoLabel(processo.unidadeOrganica)}
+            </div>
           </div>
           <div>
             <span className="block text-xs font-semibold text-slate-500">Responsável Contrato</span>

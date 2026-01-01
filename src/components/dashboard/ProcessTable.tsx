@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit2, Trash2, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
-import { Process } from "@/types/process";
+import { Process, UnidadeOrganica } from "@/types/process";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +49,13 @@ export function ProcessTable({ processos, onEdit, onDelete }: ProcessTableProps)
      }
   };
 
+  // Helper to safely render string or object
+  const getUoLabel = (uo?: string | UnidadeOrganica) => {
+    if (!uo) return "N/A";
+    if (typeof uo === 'string') return uo;
+    return uo.sigla;
+  };
+
   return (
     <div className="rounded-md border bg-white shadow-sm overflow-hidden">
       <Table>
@@ -84,7 +91,9 @@ export function ProcessTable({ processos, onEdit, onDelete }: ProcessTableProps)
                     {processo.assunto}
                 </TableCell>
                 <TableCell>
-                    <Badge variant="secondary" className="font-normal text-xs">{processo.unidadeOrganica}</Badge>
+                    <Badge variant="secondary" className="font-normal text-xs">
+                        {getUoLabel(processo.unidadeOrganica)}
+                    </Badge>
                 </TableCell>
                 <TableCell>{getStatusBadge(processo.estado)}</TableCell>
                 <TableCell>{getRiskBadge(processo.rgpd?.nivelRisco)}</TableCell>
